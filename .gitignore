@@ -1,0 +1,5 @@
+node_modules/
+src/contract.generated.json
+dist/
+.env
+.env.*

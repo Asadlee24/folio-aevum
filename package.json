@@ -1,0 +1,22 @@
+{
+  "name": "folio-aevum",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test scripts/contract.test.mjs",
+    "deploy:aevum": "node scripts/deploy.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/dm-sans": "5.2.8",
+    "@fontsource-variable/manrope": "5.2.8",
+    "ethers": "6.15.0",
+    "lucide-static": "0.562.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12",
+    "ganache": "7.9.2",
+    "solc": "0.8.28"
+  }
+}
