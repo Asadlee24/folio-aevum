@@ -1,18 +1,18 @@
 import '@fontsource-variable/dm-sans';
 import '@fontsource-variable/manrope';
-import { CONTRACT } from './config.js';
+import { CONTRACT, FEATURED_INVOICE } from './config.js';
 import * as chain from './chain.js';
 import * as model from './model.js';
 import * as ui from './ui.js';
 
 const app = document.querySelector('#app');
 const state = {
-  mode: model.readLocal('folio.mode', 'demo'), view: 'invoices',
+  view: 'invoices',
   contract: model.readLocal('folio.contract', CONTRACT), account: '',
   query: '', filter: 'all', offset: 0, count: 0, live: [],
   loading: false, busy: false, error: '', progress: '', tx: '',
   draft: { merchant: model.readLocal('folio.merchant', ''), title: '', amount: '', due: 7 },
-  dialog: '', ready: null, current: null,
+  dialog: '', ready: null, current: null, featured: null,
 };
 let routeVersion = 0;
 let listVersion = 0;
@@ -22,14 +22,9 @@ let issuingWallet = null;
 
 function invoiceLink(invoice) {
   const url = new URL('/', location.origin);
-  if (invoice.contract) {
-    url.searchParams.set('invoice', invoice.id);
-    url.searchParams.set('contract', invoice.contract);
-    if (invoice.merchant && invoice.title) url.hash = model.pack([invoice.merchant, invoice.title]);
-  } else {
-    url.searchParams.set('demo', invoice.id);
-    url.hash = model.pack([invoice.merchant, invoice.title, invoice.amount, invoice.dueAt, invoice.state, invoice.paidAt ?? 0]);
-  }
+  url.searchParams.set('invoice', invoice.id);
+  url.searchParams.set('contract', invoice.contract);
+  if (invoice.merchant && invoice.title) url.hash = model.pack([invoice.merchant, invoice.title]);
   return url.href;
 }
 
@@ -43,15 +38,11 @@ function enrich(invoice, memo) {
   return { ...invoice, merchant: memo[0], title: memo[1], memoVerified: true };
 }
 
-function collection() {
-  return state.mode === 'demo' ? model.demoInvoices : state.live;
-}
-
 function render() {
   const dialog = state.dialog === 'new' ? ui.createDialog(state) :
     state.dialog === 'ready' ? ui.readyDialog(state.ready, invoiceLink(state.ready)) : '';
   app.innerHTML = (state.view === 'checkout' ? ui.checkout(state, state.current, state.current ? invoiceLink(state.current) : location.href) :
-    state.view === 'settings' ? ui.settings(state) : ui.workspace(state, collection())) + dialog;
+    state.view === 'settings' ? ui.settings(state) : ui.workspace(state, state.live)) + dialog;
 
   const element = app.querySelector('dialog');
   if (element) {
@@ -130,16 +121,7 @@ async function copy(text) {
   }
 }
 
-function changeMode(mode) {
-  state.mode = mode;
-  model.writeLocal('folio.mode', mode);
-  state.filter = 'all';
-  state.query = '';
-  state.offset = 0;
-}
-
-function settings(mode) {
-  if (mode) changeMode(mode);
+function settings() {
   state.view = 'settings';
   state.dialog = '';
   clearMessage();
@@ -148,7 +130,7 @@ function settings(mode) {
 
 async function loadList() {
   const version = ++listVersion;
-  if (state.mode !== 'live' || !state.account || !state.contract || state.view !== 'invoices') return;
+  if (!state.account || !state.contract || state.view !== 'invoices') return;
   state.loading = true;
   render();
   try {
@@ -168,7 +150,7 @@ async function loadList() {
 }
 
 async function restoreWallet() {
-  if (!window.ethereum || state.mode !== 'live') return;
+  if (!window.ethereum) return;
   try {
     issuingWallet = await chain.wallet({ request: false });
     state.account = issuingWallet.address;
@@ -187,11 +169,19 @@ function loadHash(invoice, version) {
   }).catch(() => {});
 }
 
+async function loadFeatured() {
+  try {
+    const { contract, id, merchant, title } = FEATURED_INVOICE;
+    const item = enrich(await chain.getInvoice(contract, id), [merchant, title]);
+    state.featured = { ...item, state: model.invoiceStatus(item), url: invoiceLink(item) };
+    if (state.view === 'invoices' && !state.dialog && !state.busy) render();
+  } catch { /* The workspace remains usable when Aevum is temporarily unavailable. */ }
+}
+
 async function loadRoute() {
   const version = ++routeVersion;
   ++listVersion;
   const params = new URL(location.href).searchParams;
-  const demoId = params.get('demo');
   const liveId = params.get('invoice');
   const contract = params.get('contract');
   state.dialog = '';
@@ -200,31 +190,14 @@ async function loadRoute() {
   state.loading = false;
   clearMessage();
   clearInterval(receiptTimer);
-  if (!demoId && !liveId) {
-    state.mode = model.readLocal('folio.mode', 'demo');
+  if (!liveId) {
     state.view = 'invoices';
+    if (!state.featured) void loadFeatured();
     render();
     await loadList();
     return;
   }
   state.view = 'checkout';
-  state.mode = demoId ? 'demo' : 'live';
-  if (demoId) {
-    const details = model.unpack(location.hash.slice(1));
-    const existing = model.demoInvoices.find((invoice) => invoice.id === demoId);
-    if (/^[1-9]\d{0,12}$/.test(demoId) && metadataValid(details) && amountValid(details[2]) &&
-        Number.isSafeInteger(details[3]) && details[3] > 0 && details[3] < 5_000_000_000 &&
-        ['open', 'paid'].includes(details[4]) && (details[4] === 'open' || (Number.isSafeInteger(details[5]) && details[5] > 0 && details[5] <= details[3]))) {
-      const local = existing && existing.title === details[1] && existing.merchant === details[0] &&
-        existing.amount === details[2] && existing.dueAt === details[3];
-      state.current = local ? existing : { id: demoId, merchant: details[0], title: details[1], amount: details[2],
-        dueAt: details[3], state: details[4], issuer: model.sampleIssuer, paidAt: details[5] };
-    } else if (existing && !location.hash) state.current = existing;
-    if (!state.current) state.error = 'This demo link is incomplete.';
-    render();
-    return;
-  }
-
   state.loading = true;
   render();
   const memo = model.unpack(location.hash.slice(1));
@@ -273,7 +246,6 @@ async function connect() {
   issuingWallet = await chain.wallet();
   state.account = issuingWallet.address;
   if (state.view === 'invoices') {
-    changeMode('live');
     if (state.contract) await loadList();
     else settings();
   }
@@ -294,19 +266,14 @@ async function createInvoice(form) {
     if (!amountValid(state.draft.amount)) throw new Error('Enter a positive amount with up to six decimal places, for example 10.00.');
     if (![1, 7, 14, 30].includes(state.draft.due)) throw new Error('Select a payment window.');
     const details = { ...state.draft, dueAt: model.now() + state.draft.due * model.DAY };
-    if (state.mode === 'live') {
-      try { issuingWallet = await chain.wallet({ request: false }); }
-      catch { issuingWallet = await chain.wallet(); }
-      state.account = issuingWallet.address;
-      const invoice = await chain.issueInvoice(state.contract, issuingWallet.signer, details, notifyProgress);
-      model.saveMemo(invoice, details.merchant, details.title);
-      state.ready = enrich(invoice, [details.merchant, details.title]);
-      state.live = [state.ready, ...state.live.filter((item) => item.id !== state.ready.id)].slice(0, 10);
-      state.count++;
-    } else {
-      const nextId = Math.max(Date.now(), ...model.demoInvoices.map((item) => Number(item.id) + 1));
-      state.ready = model.storeDemo({ ...details, id: String(nextId), state: 'open', issuer: model.sampleIssuer });
-    }
+    try { issuingWallet = await chain.wallet({ request: false }); }
+    catch { issuingWallet = await chain.wallet(); }
+    state.account = issuingWallet.address;
+    const invoice = await chain.issueInvoice(state.contract, issuingWallet.signer, details, notifyProgress);
+    model.saveMemo(invoice, details.merchant, details.title);
+    state.ready = enrich(invoice, [details.merchant, details.title]);
+    state.live = [state.ready, ...state.live.filter((item) => item.id !== state.ready.id)].slice(0, 10);
+    state.count++;
     model.writeLocal('folio.merchant', details.merchant);
     state.draft = { merchant: details.merchant, title: '', amount: '', due: 7 };
     state.filter = 'all';
@@ -318,15 +285,6 @@ async function createInvoice(form) {
 async function pay() {
   const invoice = state.current;
   if (!invoice || model.invoiceStatus(invoice) !== 'open') return;
-  if (!invoice.contract) {
-    const paid = model.storeDemo({ ...invoice, state: 'paid', paidAt: model.now() });
-    const url = invoiceLink(paid);
-    history.replaceState({}, '', url);
-    state.current = paid;
-    render();
-    notice('Practice payment complete');
-    return;
-  }
   await run(async () => {
     if (!state.account) { await connect(); return; }
     const payer = await chain.wallet();
@@ -340,7 +298,7 @@ app.addEventListener('input', (event) => {
   const target = event.target;
   if (target.id === 'invoice-search') {
     state.query = target.value;
-    ui.refreshTable(state, collection());
+    ui.refreshTable(state, state.live);
   }
   if (target.form?.id === 'invoice-form') state.draft[target.name] = target.name === 'due' ? Number(target.value) : target.value;
 });
@@ -355,7 +313,6 @@ app.addEventListener('submit', (event) => {
       const deployment = await chain.verifyContract(input);
       state.contract = await deployment.getAddress();
       model.writeLocal('folio.contract', state.contract);
-      changeMode('live');
       notice('Folio contract verified');
     });
   }
@@ -374,22 +331,18 @@ app.addEventListener('click', (event) => {
       else { state.view = 'invoices'; clearMessage(); render(); void loadList(); }
       break;
     case 'new':
-      if (state.mode === 'live' && (!state.account || !state.contract)) {
+      if (!state.contract) {
         settings();
-        notice(!state.account ? 'Connect a wallet to create an invoice.' : 'Set up a Folio contract first.');
+        notice('Set up the Folio contract first.');
+      } else if (!state.account) {
+        void run(async () => {
+          await connect();
+          state.dialog = 'new';
+        });
       } else { state.dialog = 'new'; clearMessage(); render(); }
       break;
     case 'close': closeDialog(); break;
-    case 'settings':
-    case 'switch-mode': settings(); break;
-    case 'demo-mode':
-    case 'live-mode':
-      changeMode(action === 'live-mode' ? 'live' : 'demo');
-      state.view = 'invoices';
-      if (state.mode === 'live' && !state.contract) { settings(); break; }
-      render();
-      void loadList();
-      break;
+    case 'settings': settings(); break;
     case 'connect': void run(connect); break;
     case 'deploy':
       void run(async () => {
@@ -397,7 +350,6 @@ app.addEventListener('click', (event) => {
         state.account = user.address;
         state.contract = await chain.deployFolio(user.signer, notifyProgress);
         model.writeLocal('folio.contract', state.contract);
-        changeMode('live');
         notice('Folio deployed on Aevum');
       });
       break;
@@ -408,10 +360,7 @@ app.addEventListener('click', (event) => {
       state.offset = Math.max(0, state.offset + (action === 'next' ? 10 : -10));
       void loadList();
       break;
-    case 'open': openInvoice(collection().find((invoice) => invoice.id === id)); break;
-    case 'sample':
-      openInvoice(model.demoInvoices.find((invoice) => model.invoiceStatus(invoice) === 'open') ?? model.demoInvoices[0]);
-      break;
+    case 'open': openInvoice(state.live.find((invoice) => invoice.id === id)); break;
     case 'copy-ready': void copy(invoiceLink(state.ready)); break;
     case 'open-ready': openInvoice(state.ready); break;
     case 'copy-current': void copy(url); break;

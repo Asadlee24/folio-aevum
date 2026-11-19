@@ -17,17 +17,22 @@ npm test
 python3 -m http.server 8080 --directory dist
 ```
 
-Open http://localhost:8080. **Try sample checkout** exercises the checkout and receipt without a wallet. Demo payments stay in the browser and never produce an on-chain receipt.
+Open http://localhost:8080. Folio runs on Aevum Testnet. Connect a wallet to issue invoices. Existing invoice and receipt links can be opened without a wallet.
 
 ## Run on Aevum Testnet
 
 1. In **Setup & help**, choose **Aevum Testnet** and connect an EIP-1193 browser wallet. On a phone, open the app inside the wallet's browser.
-2. Get testnet tQDAY for gas and tUSD8 from the [QDay faucet](https://faucet.qday.info). Check current faucet eligibility before the demo.
-3. Select **Deploy contract**, or paste an existing Folio contract address and select **Use contract**.
+2. Get testnet tQDAY for gas and tUSD8 from the [QDay faucet](https://faucet.qday.info). The QDay challenge page also documents the Discord faucet for verified members.
+3. Use the Folio contract already configured in the app. **Setup & help** also supports an alternate Folio deployment.
 4. Create an invoice and open the share link from a second funded test wallet. Confirm a token approval if prompted, then confirm the payment.
 5. Open the receipt and select **Verify on Aevum Explorer**. Check the invoice ID, payer, issuer and transfer amount.
 
 To publish a site with a default deployment, deploy from a dedicated test wallet using `npm run deploy:aevum` with `FOLIO_TESTNET_PRIVATE_KEY` set in your shell. Set `FOLIO_AEVUM_CONTRACT` to the returned contract address in your Vercel project environment (or your local shell), then rebuild and deploy. Keep private keys out of the repository. For an app-managed deployment, the contract address is stored locally and included in every invoice link.
+
+## Aevum deployment
+
+- [Folio contract](https://explorer-test.qday.info/address/0x2FFB3C0976cdE95a54EE95a6b0914A3a843258D3)
+- [Invoice creation transaction](https://explorer-test.qday.info/tx/0xd717bb29db89f83362b9e11f8c5c6916254156ada6e1a14000ad0f68e5598be4)
 
 ## How settlement works
 
