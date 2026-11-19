@@ -44,16 +44,14 @@ function hero(state) {
   return `
     <section class="hero" aria-label="Folio invoice workspace">
       <div class="hero-copy">
-        <h1>Good work.<br><em>Paid on record.</em></h1>
-        <p>Send a payment link and give clients a receipt they can verify.</p>
+        <h1>Invoice for the work.<br><em>Keep the proof.</em></h1>
+        <p>Send clients a payment link. Give them a receipt they can verify on Aevum.</p>
         ${newButton()}
       </div>
       <div class="hero-graphic">
-        <div class="graphic-lines" aria-hidden="true"></div>
-        <div class="graphic-arc arc-one" aria-hidden="true"></div><div class="graphic-arc arc-two" aria-hidden="true"></div>
         ${featured ? `<a class="featured-invoice" href="${esc(featured.url)}">
           <span class="featured-top"><span>${icon('receipt')} AEVUM TESTNET</span>${badge(featured.state)}</span>
-          <span class="featured-title">${esc(featured.title)}</span>
+          <span class="featured-title">${featured.state === 'paid' ? 'Verified payment receipt' : 'Open testnet invoice'}</span>
           <strong>${price(featured.amount)} <small>tUSD8</small></strong>
           <span class="featured-bottom"><span>${esc(featured.merchant)}</span><span>${featured.state === 'paid' ? 'View receipt' : 'View invoice'}</span></span>
         </a>` : `<div class="featured-invoice" aria-hidden="true">
@@ -86,9 +84,9 @@ function invoiceTable(collection, state) {
   });
   if (!filtered.length) {
     if (state.loading) return '<div class="empty">' + icon('loader-circle') + '<p>Loading invoices from Aevum…</p></div>';
-    const title = state.account ? (collection.length ? 'No matching invoices' : 'No invoices yet') : 'Your workspace is ready';
+    const title = state.account ? (collection.length ? 'No matching invoices' : 'No invoices yet') : 'Connect your wallet';
     const detail = state.account ? (collection.length ? 'Clear the search or pick another status.' : 'Create your first invoice to get a shareable payment link.') :
-      'Connect an Aevum wallet to issue invoices and track their payments.';
+      'Your issued invoices and receipts will appear here.';
     return '<div class="empty empty-workspace"><div class="setting-icon">' + icon(state.account ? 'inbox' : 'wallet') +
       '</div><h3>' + title + '</h3><p>' + detail + '</p>' +
       (collection.length ? '' : button(state.account ? 'New invoice' : 'Connect wallet', state.account ? 'new' : 'connect',
@@ -105,10 +103,9 @@ export function workspace(state, collection) {
     '<section class="invoices" aria-labelledby="invoice-title"><div class="section-head"><div><h2 id="invoice-title">Invoices</h2>' +
     '<p>Manage invoices issued by your Aevum wallet.</p></div>' +
     (state.account ? button('Refresh invoices', 'refresh', { symbol: 'layout-grid', className: 'secondary refresh-button' }) : '') + '</div>' +
-    '<div class="table-frame"><div class="table-controls"><div class="filters" aria-label="Filter invoices">' +
+    '<div class="table-frame">' + (state.account && collection.length ? '<div class="table-controls"><div class="filters" aria-label="Filter invoices">' +
     tabs.map(([value, label]) => '<button data-action="filter" data-filter="' + value + '" aria-pressed="' + (state.filter === value) + '">' + label + '</button>').join('') +
-    '</div><label class="search">' + icon('search') + '<span class="sr-only">Search invoices</span><input type="search" id="invoice-search" placeholder="Find an invoice" value="' + esc(state.query) + '"></label></div>' +
-    '<div id="invoice-table">' + invoiceTable(collection, state) + '</div>' +
+    '</div><label class="search">' + icon('search') + '<span class="sr-only">Search invoices</span><input type="search" id="invoice-search" placeholder="Find an invoice" value="' + esc(state.query) + '"></label></div>' : '') + '<div id="invoice-table">' + invoiceTable(collection, state) + '</div>' +
     (state.count > 10 ? '<div class="pagination">' +
       button('Previous', 'previous', { disabled: state.offset === 0 }) + '<span>' + (state.offset + 1) + '–' + Math.min(state.offset + 10, state.count) + ' of ' + state.count + '</span>' +
       button('Next', 'next', { disabled: state.offset + 10 >= state.count }) + '</div>' : '') +
@@ -193,7 +190,7 @@ export function checkout(state, invoice, link) {
   const paid = status === 'paid';
   const cancellable = state.account && invoice?.issuer.toLowerCase() === state.account.toLowerCase() && invoice.state === 'open';
   const verified = invoice?.memoVerified;
-  const paymentAction = state.account ? 'Pay ' + price(invoice?.amount) + ' tUSD8' : 'Connect wallet to pay';
+  const paymentAction = state.account && invoice ? 'Pay ' + price(invoice.amount) + ' tUSD8' : 'Connect wallet to pay';
   const receiptTitle = paid ? 'Payment receipt' : 'Payment request';
   const amountLabel = paid ? 'AMOUNT PAID' : 'AMOUNT DUE';
 
@@ -202,28 +199,33 @@ export function checkout(state, invoice, link) {
       '<div class="empty">' + icon('loader-circle') + '<p>Checking invoice on Aevum…</p></div>' :
       '<h1>Invoice unavailable</h1>' + progress(state) + button('Try again', 'reload-checkout')) + '</section>' :
       `<section class="checkout-card ${paid ? 'receipt-paid' : ''}">
-      <div class="checkout-top"><div class="setting-icon ${paid ? 'success' : ''}">${icon(paid ? 'check' : 'receipt')}</div>${badge(status)}</div>
-      <div class="checkout-title"><span class="eyebrow">${receiptTitle.toUpperCase()} / #${esc(invoice.id)}</span>
-        <h1>${esc(invoice.title || 'Invoice #' + invoice.id)}</h1>
-        <p>${invoice.merchant ? 'From ' + esc(invoice.merchant) : 'From ' + esc(shortAddress(invoice.issuer))}${verified ? ' <span class="verified-name" title="Invoice details match the on-chain hash">' + icon('shield-check') + '</span>' : ''}</p></div>
-      <div class="checkout-amount"><span>${amountLabel}</span><div>${price(invoice.amount)} <small>tUSD8</small></div></div>
-      <dl class="checkout-details">
-        <div><dt>${paid ? 'Paid on' : 'Due date (UTC)'}</dt><dd>${dateText(paid ? invoice.paidAt : invoice.dueAt)}</dd></div>
-        <div><dt>Recipient</dt><dd>${external(esc(shortAddress(invoice.issuer)), addressURL(invoice.issuer))}</dd></div>
-        ${paid ? '<div><dt>Payer</dt><dd>' + external(esc(shortAddress(invoice.payer)), addressURL(invoice.payer)) + '</dd></div>' : ''}
-        <div><dt>Network</dt><dd>QDay Aevum Testnet</dd></div>
-      </dl>
-      ${!verified ? '<div class="checkout-note warning">' + icon('triangle-alert') + ' The link has no matching invoice description. Verify the recipient and amount.</div>' : ''}
-      ${status === 'open' ? '<div class="checkout-note">' + icon('shield-check') + ' Payment settles directly to the recipient’s wallet in tUSD8.</div>' : ''}
-      ${paid ? '<div class="checkout-note">' + icon('shield-check') + ' This payment is recorded on Aevum Testnet.</div>' : ''}
-      ${progress(state)}
-      <div class="checkout-actions">
-        ${status === 'open' ? button(paymentAction, 'pay', { symbol: 'wallet', className: 'primary', disabled: state.busy }) : ''}
-        ${paid && invoice.hash ? external('Verify on Aevum Explorer', txURL(invoice.hash)) : ''}
-        ${button(paid ? 'Copy receipt link' : 'Copy invoice link', 'copy-current', { symbol: 'copy', attrs: 'data-url="' + esc(link) + '"' })}
-        ${cancellable ? button('Cancel invoice', 'cancel-invoice', { className: 'quiet', disabled: state.busy }) : ''}
+      <div class="checkout-document">
+        <div class="checkout-top"><div class="setting-icon ${paid ? 'success' : ''}">${icon(paid ? 'check' : 'receipt')}</div>${badge(status)}</div>
+        <div class="checkout-title"><span class="eyebrow">${receiptTitle} / #${esc(invoice.id)}</span>
+          <h1>${esc(invoice.title || 'Invoice #' + invoice.id)}</h1>
+          <p>From ${esc(invoice.merchant || shortAddress(invoice.issuer))}${verified ? ' <span class="verified-name" aria-label="Invoice details verified" title="Invoice details match the on-chain hash">' + icon('shield-check') + '</span>' : ''}</p>
+        </div>
+        <dl class="checkout-details">
+          <div><dt>${paid ? 'Paid on (UTC)' : 'Due date (UTC)'}</dt><dd>${dateText(paid ? invoice.paidAt : invoice.dueAt)}</dd></div>
+          <div><dt>Recipient</dt><dd>${external(esc(shortAddress(invoice.issuer)), addressURL(invoice.issuer))}</dd></div>
+          ${paid ? '<div><dt>Payer</dt><dd>' + external(esc(shortAddress(invoice.payer)), addressURL(invoice.payer)) + '</dd></div>' : ''}
+          <div><dt>Network</dt><dd>QDay Aevum Testnet</dd></div>
+        </dl>
       </div>
-      ${status === 'open' ? mobileWallet() : ''}
+      <div class="checkout-settlement">
+        <div class="checkout-amount"><span>${amountLabel}</span><div>${price(invoice.amount)} <small>tUSD8</small></div></div>
+        ${!verified ? '<div class="checkout-note warning">' + icon('triangle-alert') + ' The invoice description is unverified. Check the recipient and amount.</div>' : ''}
+        ${status === 'open' ? '<div class="checkout-note">' + icon('shield-check') + ' Test tokens settle directly to the recipient’s wallet.</div>' : ''}
+        ${paid ? '<div class="checkout-note">' + icon('shield-check') + ' Confirmed on Aevum Testnet.</div>' : ''}
+        ${progress(state)}
+        <div class="checkout-actions">
+          ${status === 'open' ? button(paymentAction, 'pay', { symbol: 'wallet', className: 'primary', disabled: state.busy }) : ''}
+          ${paid && invoice.hash ? external('Verify transaction', txURL(invoice.hash)) : ''}
+          ${button(paid ? 'Copy receipt link' : 'Copy invoice link', 'copy-current', { symbol: 'copy', attrs: 'data-url="' + esc(link) + '"' })}
+          ${cancellable ? button('Cancel invoice', 'cancel-invoice', { className: 'quiet', disabled: state.busy }) : ''}
+        </div>
+        ${status === 'open' ? mobileWallet() : ''}
+      </div>
       </section>`) + '</main>' + footer();
 }
 
