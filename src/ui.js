@@ -33,10 +33,8 @@ export function header(state, checkout = false) {
       '<button data-action="home" ' + (state.view === 'invoices' ? 'aria-current="page"' : '') + '>' + icon('layout-grid') + 'Invoices</button>' +
       '<button data-action="settings" ' + (state.view === 'settings' ? 'aria-current="page"' : '') + '>' + icon('settings') + 'Setup &amp; help</button>' +
       '</nav><div class="mast-end">' + network +
-      button(state.account ? esc(shortAddress(state.account)) : 'Connect wallet', 'connect', {
-        symbol: 'wallet', className: 'secondary wallet-button',
-        attrs: 'aria-label="' + (state.account ? 'Connected wallet ' + esc(shortAddress(state.account)) : 'Connect wallet') + '"',
-      }) + '</div>') + '</div></header>';
+      walletAction(state.account ? esc(shortAddress(state.account)) : 'Connect wallet', 'connect', 'secondary wallet-button', false,
+        state.account ? 'aria-label="Connected wallet ' + esc(shortAddress(state.account)) + '"' : '') + '</div>') + '</div></header>';
 }
 
 export function hero(state) {
@@ -58,7 +56,7 @@ export function hero(state) {
     <section class="hero" aria-labelledby="home-title">
       <div class="hero-copy">
         <h1 id="home-title">Send an invoice.<br><em>Keep the proof.</em></h1>
-        <p>Share one payment link. It becomes a verifiable receipt once your client pays on Aevum.</p>
+        <p>Send a payment link and give clients a receipt they can verify on Aevum.</p>
         <div class="hero-actions">
           ${newButton()}
           ${featured ? `<a class="hero-example" href="${esc(featured.url)}">${paid ? 'See live receipt' : 'See live invoice'}</a>` : ''}
@@ -102,11 +100,15 @@ function invoiceTable(collection, state) {
     const title = state.account ? (collection.length ? 'No matching invoices' : 'No invoices yet') : 'Connect your wallet';
     const detail = state.account ? (collection.length ? 'Clear the search or pick another status.' : 'Create your first invoice to get a shareable payment link.') :
       'Your issued invoices and receipts will appear here.';
-    return '<div class="empty empty-workspace"><div class="setting-icon">' + icon(state.account ? 'inbox' : 'wallet') +
-      '</div><h3>' + title + '</h3><p>' + detail + '</p>' +
-      (collection.length ? '' : button(state.account ? 'New invoice' : 'Connect wallet', state.account ? 'new' : 'connect',
-        { symbol: state.account ? 'plus' : 'wallet' })) +
-      (!state.account ? '<p class="mobile-entry">' + mobileWallet() + '</p>' : '') + '</div>';
+    const action = state.account
+      ? button('New invoice', 'new', { symbol: 'plus' })
+      : walletAction('Connect wallet', 'connect');
+
+    return `<div class="empty empty-workspace">
+      <span class="setting-icon">${icon(state.account ? 'inbox' : 'wallet')}</span>
+      <div class="empty-copy"><h3>${title}</h3><p>${detail}</p></div>
+      ${collection.length ? '' : action}
+    </div>`;
   }
   return '<table><thead><tr><th scope="col">Invoice</th><th scope="col">Amount</th><th scope="col">Status</th>' +
     '<th scope="col" class="row-date">Due date (UTC)</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>' +
@@ -116,7 +118,7 @@ function invoiceTable(collection, state) {
 export function workspace(state, collection) {
   return header(state) + '<main class="workspace" id="main">' + hero(state) +
     '<section class="invoices" aria-labelledby="invoice-title"><div class="section-head"><div><h2 id="invoice-title">Invoices</h2>' +
-    '<p>Manage invoices issued by your Aevum wallet.</p></div>' +
+    '</div>' +
     (state.account ? button('Refresh invoices', 'refresh', { symbol: 'layout-grid', className: 'secondary refresh-button' }) : '') + '</div>' +
     '<div class="table-frame">' + (state.account && collection.length ? '<div class="table-controls"><div class="filters" aria-label="Filter invoices">' +
     tabs.map(([value, label]) => '<button data-action="filter" data-filter="' + value + '" aria-pressed="' + (state.filter === value) + '">' + label + '</button>').join('') +
@@ -147,7 +149,7 @@ export function settings(state) {
       </section>
       <section class="setting"><div class="setting-icon">${icon('wallet')}</div><h2>Wallet and test tokens</h2>
         <p>tQDAY covers testnet gas and tUSD8 is the currency used for invoice payments.</p>
-        <div class="mode-options">${button(state.account ? 'Wallet connected' : 'Connect wallet', 'connect', { symbol: 'wallet' })} ${external('QDay faucet', FAUCET)}</div>
+        <div class="mode-options">${walletAction(state.account ? 'Wallet connected' : 'Connect wallet', 'connect')} ${external('QDay faucet', FAUCET)}</div>
       </section>
       <section class="setting wide"><div class="setting-icon">${icon('shield-check')}</div><h2>Folio contract</h2>
         <p>${state.contract ? 'This workspace uses the contract below. Each new client link keeps its original contract address.' : 'Deploy a Folio contract with a testnet wallet or connect an existing Folio deployment.'}</p>
@@ -256,18 +258,20 @@ export function checkout(state, invoice, link) {
         ${paid ? '<div class="checkout-note">' + icon('shield-check') + ' Confirmed on Aevum Testnet.</div>' : ''}
         ${progress(state)}
         <div class="checkout-actions">
-          ${status === 'open' ? button(paymentAction, 'pay', { symbol: 'wallet', className: 'primary', disabled: state.busy }) : ''}
+          ${status === 'open' ? walletAction(paymentAction, 'pay', 'primary', state.busy) : ''}
           ${paid && invoice.hash ? external('Verify transaction', txURL(invoice.hash)) : ''}
           ${button(paid ? 'Copy receipt link' : 'Copy invoice link', 'copy-current', { symbol: 'copy', attrs: 'data-url="' + esc(link) + '"' })}
           ${cancellable ? button('Cancel invoice', 'cancel-invoice', { className: 'quiet', disabled: state.busy }) : ''}
         </div>
-        ${status === 'open' ? mobileWallet() : ''}
       </div>
       </section>${invoiceProof(invoice, status)}`) + '</main>' + footer();
 }
 
-export function mobileWallet() {
-  if (window.ethereum || !/iphone|android|ipad/i.test(navigator.userAgent) || location.protocol !== 'https:') return '';
-  return '<a class="mobile-wallet" href="https://metamask.app.link/dapp/' +
-    esc(location.href.slice('https://'.length)) + '">Open in MetaMask</a>';
+function walletAction(label, action, style = 'secondary', busy = false, attrs = '') {
+  const phone = /iphone|android|ipad/i.test(navigator.userAgent);
+  if (!busy && !window.ethereum && phone && location.protocol === 'https:') {
+    const dapp = esc(location.href.slice('https://'.length));
+    return `<a class="button ${style}" href="https://metamask.app.link/dapp/${dapp}">${icon('wallet')}<span>Open in MetaMask</span></a>`;
+  }
+  return button(label, action, { symbol: 'wallet', className: style, disabled: busy, attrs });
 }
