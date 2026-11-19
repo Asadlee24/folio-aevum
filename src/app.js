@@ -169,12 +169,24 @@ function loadHash(invoice, version) {
   }).catch(() => {});
 }
 
-async function loadFeatured() {
+async function loadFeatured(version) {
   try {
     const { contract, id, merchant, title } = FEATURED_INVOICE;
     const item = enrich(await chain.getInvoice(contract, id), [merchant, title]);
+    if (version !== routeVersion) return;
     state.featured = { ...item, state: model.invoiceStatus(item), url: invoiceLink(item) };
-    if (state.view === 'invoices' && !state.dialog && !state.busy) render();
+    if (state.view === 'invoices' && !state.dialog && !state.busy) {
+      const hero = app.querySelector('.hero');
+      const invoice = hero?.querySelector('.invoice-float');
+      if (invoice && !invoice.contains(document.activeElement)) {
+        const template = document.createElement('template');
+        template.innerHTML = ui.hero(state);
+        invoice.replaceChildren(...template.content.querySelector('.invoice-float').childNodes);
+        hero.querySelector('.hero-example')?.remove();
+        const example = template.content.querySelector('.hero-example');
+        if (example) hero.querySelector('.hero-actions').append(example);
+      }
+    }
   } catch { /* The workspace remains usable when Aevum is temporarily unavailable. */ }
 }
 
@@ -192,7 +204,7 @@ async function loadRoute() {
   clearInterval(receiptTimer);
   if (!liveId) {
     state.view = 'invoices';
-    if (!state.featured) void loadFeatured();
+    void loadFeatured(version);
     render();
     await loadList();
     return;

@@ -39,13 +39,14 @@ export function header(state, checkout = false) {
       }) + '</div>') + '</div></header>';
 }
 
-function hero(state) {
+export function hero(state) {
   const featured = state.featured;
+  const paid = featured?.state === 'paid';
   const card = featured ? `<a class="featured-invoice" href="${esc(featured.url)}">
     <span class="featured-top"><span>${icon('receipt')} Invoice #${esc(featured.id)}</span>${badge(featured.state)}</span>
-    <span class="featured-title">${featured.state === 'paid' ? 'Amount received' : 'Amount due'}</span>
+    <span class="featured-title">${paid ? 'Amount received' : 'Invoice total'}</span>
     <strong>${price(featured.amount)} <small>tUSD8</small></strong>
-    <span class="featured-bottom"><span>${esc(featured.merchant || shortAddress(featured.issuer))}</span><span>${featured.state === 'paid' ? 'View receipt' : 'View invoice'}</span></span>
+    <span class="featured-bottom"><span>${esc(featured.merchant || shortAddress(featured.issuer))}</span><span>${paid ? 'Open receipt' : 'Open invoice'} ${icon('external-link')}</span></span>
   </a>` : `<div class="featured-invoice" aria-hidden="true">
     <span class="featured-top"><span>${icon('receipt')} Folio</span></span>
     <span class="featured-title">Settlement currency</span>
@@ -54,18 +55,21 @@ function hero(state) {
   </div>`;
 
   return `
-    <section class="hero" aria-label="Folio invoice workspace">
+    <section class="hero" aria-labelledby="home-title">
       <div class="hero-copy">
-        <h1>Invoicing,<br><em>with proof.</em></h1>
-        <p>Send a payment link. Give your client a receipt they can verify on Aevum.</p>
-        ${newButton()}
+        <h1 id="home-title">Send an invoice.<br><em>Keep the proof.</em></h1>
+        <p>Share one payment link. It becomes a verifiable receipt once your client pays on Aevum.</p>
+        <div class="hero-actions">
+          ${newButton()}
+          ${featured ? `<a class="hero-example" href="${esc(featured.url)}">${paid ? 'See live receipt' : 'See live invoice'}</a>` : ''}
+        </div>
       </div>
       <div class="hero-graphic" data-invoice-scene>
         <div class="scene-orbit" aria-hidden="true"></div>
         <div class="invoice-stage">
           <div class="invoice-float">
             <div class="invoice-stack" aria-hidden="true">
-              <div class="invoice-layer"></div><div class="invoice-layer"></div><div class="invoice-layer"></div>
+              <div class="invoice-layer"></div><div class="invoice-layer"></div>
             </div>
             ${card}
             <div class="invoice-coin" aria-hidden="true">${icon('shield-check')}</div>
@@ -196,6 +200,29 @@ export function progress(state) {
       (state.tx ? '<br>' + external('View transaction', txURL(state.tx)) : '') + '</span></div>' : '');
 }
 
+function invoiceProof(invoice, status) {
+  const settled = status === 'paid';
+  const payment = {
+    open: 'Awaiting payment',
+    paid: 'Payment confirmed',
+    expired: 'Payment window expired',
+    cancelled: 'Invoice cancelled',
+  }[status];
+
+  return `
+    <section class="invoice-proof" aria-labelledby="proof-title">
+      <div class="proof-heading">
+        <span class="proof-icon">${icon('shield-check')}</span>
+        <div><h2 id="proof-title">On-chain record</h2><p>Aevum Testnet</p></div>
+        ${external('View contract', addressURL(invoice.contract))}
+      </div>
+      <ol class="proof-steps">
+        <li><i aria-hidden="true">${icon('check')}</i> Issued on-chain</li>
+        <li class="${settled ? 'complete' : 'pending'}"><i aria-hidden="true">${icon(settled ? 'check' : 'clock')}</i> ${payment}</li>
+      </ol>
+    </section>`;
+}
+
 export function checkout(state, invoice, link) {
   const status = invoice ? invoiceStatus(invoice) : '';
   const paid = status === 'paid';
@@ -220,7 +247,6 @@ export function checkout(state, invoice, link) {
           <div><dt>${paid ? 'Paid on (UTC)' : 'Due date (UTC)'}</dt><dd>${dateText(paid ? invoice.paidAt : invoice.dueAt)}</dd></div>
           <div><dt>Recipient</dt><dd>${external(esc(shortAddress(invoice.issuer)), addressURL(invoice.issuer))}</dd></div>
           ${paid ? '<div><dt>Payer</dt><dd>' + external(esc(shortAddress(invoice.payer)), addressURL(invoice.payer)) + '</dd></div>' : ''}
-          <div><dt>Network</dt><dd>QDay Aevum Testnet</dd></div>
         </dl>
       </div>
       <div class="checkout-settlement">
@@ -237,7 +263,7 @@ export function checkout(state, invoice, link) {
         </div>
         ${status === 'open' ? mobileWallet() : ''}
       </div>
-      </section>`) + '</main>' + footer();
+      </section>${invoiceProof(invoice, status)}`) + '</main>' + footer();
 }
 
 export function mobileWallet() {
