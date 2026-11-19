@@ -4,6 +4,8 @@ Folio is a testnet invoice workspace for freelancers and small studios. A mercha
 
 Built for the Invoice Payments track of the QDay Aevum Builder Challenge.
 
+[Open Folio on Vercel](https://folio-aevum.vercel.app/)
+
 ## Run locally
 
 Use Node.js 22 or newer.
@@ -40,4 +42,15 @@ To publish a site with a default deployment, deploy from a dedicated test wallet
 - [Challenge rules](https://qday.io/builder-challenge)
 - [Aevum explorer](https://explorer-test.qday.info)
 
-Folio source is published under the MIT License. The interface uses DM Sans, Manrope and Lucide icons under their respective upstream licenses.
+## Licenses
+
+Folio is MIT licensed. Font files and icons keep their original licenses in [assets/licenses](assets/licenses).
+
+| Dependency | Use | License |
+| --- | --- | --- |
+| ethers | Browser wallet and Aevum RPC | MIT |
+| Lucide | Interface icons | ISC and MIT notices |
+| DM Sans and Manrope | Self-hosted fonts | OFL-1.1 |
+| esbuild | Browser bundle | MIT |
+| solc | Contract compilation | MIT |
+| Ganache | Local contract tests | MIT |
