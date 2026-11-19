@@ -294,6 +294,27 @@ async function pay() {
   });
 }
 
+const canTilt = matchMedia('(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)');
+
+app.addEventListener('pointermove', (event) => {
+  if (!canTilt.matches || event.pointerType === 'touch') return;
+  const scene = event.target.closest('[data-invoice-scene]');
+  if (!scene) return;
+
+  const bounds = scene.getBoundingClientRect();
+  const x = (event.clientX - bounds.left) / bounds.width - 0.5;
+  const y = (event.clientY - bounds.top) / bounds.height - 0.5;
+  scene.style.setProperty('--tilt-y', (x * 21).toFixed(1) + 'deg');
+  scene.style.setProperty('--tilt-x', (y * -16).toFixed(1) + 'deg');
+});
+
+app.addEventListener('pointerout', (event) => {
+  const scene = event.target.closest('[data-invoice-scene]');
+  if (!scene || (event.relatedTarget instanceof Node && scene.contains(event.relatedTarget))) return;
+  scene.style.removeProperty('--tilt-x');
+  scene.style.removeProperty('--tilt-y');
+});
+
 app.addEventListener('input', (event) => {
   const target = event.target;
   if (target.id === 'invoice-search') {

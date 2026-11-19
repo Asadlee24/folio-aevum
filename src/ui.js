@@ -30,8 +30,8 @@ export function header(state, checkout = false) {
   return '<header class="mast"><div class="mast-inner">' + brand +
     (checkout ? '<div class="mast-end">' + network + '</div>' :
       '<nav aria-label="Workspace" class="primary-nav">' +
-      '<button data-action="home" ' + (state.view === 'invoices' ? 'aria-current="page"' : '') + '>Invoices</button>' +
-      '<button data-action="settings" ' + (state.view === 'settings' ? 'aria-current="page"' : '') + '>Setup &amp; help</button>' +
+      '<button data-action="home" ' + (state.view === 'invoices' ? 'aria-current="page"' : '') + '>' + icon('layout-grid') + 'Invoices</button>' +
+      '<button data-action="settings" ' + (state.view === 'settings' ? 'aria-current="page"' : '') + '>' + icon('settings') + 'Setup &amp; help</button>' +
       '</nav><div class="mast-end">' + network +
       button(state.account ? esc(shortAddress(state.account)) : 'Connect wallet', 'connect', {
         symbol: 'wallet', className: 'secondary wallet-button',
@@ -41,25 +41,36 @@ export function header(state, checkout = false) {
 
 function hero(state) {
   const featured = state.featured;
+  const card = featured ? `<a class="featured-invoice" href="${esc(featured.url)}">
+    <span class="featured-top"><span>${icon('receipt')} Invoice #${esc(featured.id)}</span>${badge(featured.state)}</span>
+    <span class="featured-title">${featured.state === 'paid' ? 'Amount received' : 'Amount due'}</span>
+    <strong>${price(featured.amount)} <small>tUSD8</small></strong>
+    <span class="featured-bottom"><span>${esc(featured.merchant || shortAddress(featured.issuer))}</span><span>${featured.state === 'paid' ? 'View receipt' : 'View invoice'}</span></span>
+  </a>` : `<div class="featured-invoice" aria-hidden="true">
+    <span class="featured-top"><span>${icon('receipt')} Folio</span></span>
+    <span class="featured-title">Settlement currency</span>
+    <strong>tUSD8</strong>
+    <span class="featured-bottom"><span>Aevum Testnet</span>${icon('shield-check')}</span>
+  </div>`;
+
   return `
     <section class="hero" aria-label="Folio invoice workspace">
       <div class="hero-copy">
-        <h1>Invoice for the work.<br><em>Keep the proof.</em></h1>
-        <p>Send clients a payment link. Give them a receipt they can verify on Aevum.</p>
+        <h1>Invoicing,<br><em>with proof.</em></h1>
+        <p>Send a payment link. Give your client a receipt they can verify on Aevum.</p>
         ${newButton()}
       </div>
-      <div class="hero-graphic">
-        ${featured ? `<a class="featured-invoice" href="${esc(featured.url)}">
-          <span class="featured-top"><span>${icon('receipt')} AEVUM TESTNET</span>${badge(featured.state)}</span>
-          <span class="featured-title">${featured.state === 'paid' ? 'Verified payment receipt' : 'Open testnet invoice'}</span>
-          <strong>${price(featured.amount)} <small>tUSD8</small></strong>
-          <span class="featured-bottom"><span>${esc(featured.merchant)}</span><span>${featured.state === 'paid' ? 'View receipt' : 'View invoice'}</span></span>
-        </a>` : `<div class="featured-invoice" aria-hidden="true">
-          <span class="featured-top"><span>${icon('receipt')} FOLIO</span></span>
-          <span class="featured-title">Invoice</span>
-          <strong>tUSD8</strong>
-          <span class="featured-bottom"><span>Aevum Testnet</span>${icon('shield-check')}</span>
-        </div>`}
+      <div class="hero-graphic" data-invoice-scene>
+        <div class="scene-orbit" aria-hidden="true"></div>
+        <div class="invoice-stage">
+          <div class="invoice-float">
+            <div class="invoice-stack" aria-hidden="true">
+              <div class="invoice-layer"></div><div class="invoice-layer"></div><div class="invoice-layer"></div>
+            </div>
+            ${card}
+            <div class="invoice-coin" aria-hidden="true">${icon('shield-check')}</div>
+          </div>
+        </div>
       </div>
     </section>`;
 }
