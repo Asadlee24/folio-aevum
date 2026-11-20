@@ -163,17 +163,8 @@ export function settings(state) {
         <div class="mode-options">${newButton()}</div>
       </section>
       <section class="setting"><div class="setting-icon">${icon('wallet')}</div><h2>Wallet and test tokens</h2>
-        <p>tQDAY covers testnet gas and tUSD8 is the currency used for invoice payments.</p>
+        <p>Connect your wallet to Aevum Testnet. Use tQDAY for gas and tUSD8 to pay invoices.</p>
         <div class="mode-options">${walletAction(state.account ? 'Wallet connected' : 'Connect wallet', 'connect')} ${external('QDay faucet', FAUCET)}</div>
-      </section>
-      <section class="setting wide"><div class="setting-icon">${icon('shield-check')}</div><h2>Folio contract</h2>
-        <p>${state.contract ? 'This workspace uses the contract below. Each new client link keeps its original contract address.' : 'Deploy a Folio contract with a testnet wallet or connect an existing Folio deployment.'}</p>
-        ${state.contract ? '<p class="contract-code">' + external(esc(state.contract), addressURL(state.contract)) + '</p>' : ''}
-        <form id="contract-form" class="contract-form"><label class="sr-only" for="contract-input">Folio contract address</label>
-          <input id="contract-input" name="contract" placeholder="Enter a Folio contract address" spellcheck="false" autocomplete="off" required maxlength="42">
-          ${button('Use contract', '', { type: 'submit', disabled: state.busy })}
-          ${button('Deploy contract', 'deploy', { symbol: 'plus', disabled: state.busy })}
-        </form>
         <div class="progress-inline" aria-live="polite">${progress(state)}</div>
       </section>
     </div>

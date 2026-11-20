@@ -6,9 +6,11 @@ import * as model from './model.js';
 import * as ui from './ui.js';
 
 const app = document.querySelector('#app');
+const savedContract = model.readLocal('folio.contract', null);
+const workspaceContract = chain.addressOK(savedContract) ? savedContract : CONTRACT;
 const state = {
   view: 'invoices',
-  contract: model.readLocal('folio.contract', CONTRACT), account: '',
+  account: '',
   query: '', filter: 'all', offset: 0, count: 0, live: [],
   loading: false, busy: false, error: '', progress: '', tx: '',
   draft: { merchant: model.readLocal('folio.merchant', ''), title: '', amount: '', due: 7 },
@@ -145,11 +147,11 @@ function settings() {
 
 async function loadList() {
   const version = ++listVersion;
-  if (!state.account || !state.contract || state.view !== 'invoices') return;
+  if (!state.account || state.view !== 'invoices') return;
   state.loading = true;
   render();
   try {
-    const { invoices, count } = await chain.listInvoices(state.contract, state.account, state.offset);
+    const { invoices, count } = await chain.listInvoices(workspaceContract, state.account, state.offset);
     if (version !== listVersion) return;
     state.live = invoices.map((invoice) => enrich(invoice, model.getMemo(invoice)));
     state.count = count;
@@ -211,7 +213,7 @@ async function loadRoute() {
   clearInterval(receiptTimer);
   if (!liveId) {
     state.view = 'invoices';
-    if (params.get('new') === '1' && state.contract) {
+    if (params.get('new') === '1') {
       state.dialog = 'new';
       params.delete('new');
       const url = new URL(location.href);
@@ -271,10 +273,7 @@ function openInvoice(invoice) {
 async function connect() {
   issuingWallet = await chain.wallet();
   state.account = issuingWallet.address;
-  if (state.view === 'invoices') {
-    if (state.contract) await loadList();
-    else settings();
-  }
+  if (state.view === 'invoices') await loadList();
 }
 
 function amountValid(value) {
@@ -295,7 +294,7 @@ async function createInvoice(form) {
     try { issuingWallet = await chain.wallet({ request: false }); }
     catch { issuingWallet = await chain.wallet(); }
     state.account = issuingWallet.address;
-    const invoice = await chain.issueInvoice(state.contract, issuingWallet.signer, details, notifyProgress);
+    const invoice = await chain.issueInvoice(workspaceContract, issuingWallet.signer, details, notifyProgress);
     model.saveMemo(invoice, details.merchant, details.title);
     state.ready = enrich(invoice, [details.merchant, details.title]);
     state.live = [state.ready, ...state.live.filter((item) => item.id !== state.ready.id)].slice(0, 10);
@@ -333,15 +332,6 @@ app.addEventListener('submit', (event) => {
   event.preventDefault();
   const form = event.target;
   if (form.id === 'invoice-form') void createInvoice(form);
-  else if (form.id === 'contract-form') {
-    const input = String(new FormData(form).get('contract')).trim();
-    void run(async () => {
-      const deployment = await chain.verifyContract(input);
-      state.contract = await deployment.getAddress();
-      model.writeLocal('folio.contract', state.contract);
-      notice('Folio contract verified');
-    });
-  }
 });
 
 app.addEventListener('click', (event) => {
@@ -356,24 +346,10 @@ app.addEventListener('click', (event) => {
       if (state.view === 'checkout') go(new URL('/', location.origin).href);
       else { state.view = 'invoices'; clearMessage(); render(); void loadList(); }
       break;
-    case 'new':
-      if (!state.contract) {
-        settings();
-        notice('Set up the Folio contract first.');
-      } else { state.dialog = 'new'; clearMessage(); render(); }
-      break;
+    case 'new': state.dialog = 'new'; clearMessage(); render(); break;
     case 'close': closeDialog(); break;
     case 'settings': settings(); break;
     case 'connect': void run(connect); break;
-    case 'deploy':
-      void run(async () => {
-        const user = await chain.wallet();
-        state.account = user.address;
-        state.contract = await chain.deployFolio(user.signer, notifyProgress);
-        model.writeLocal('folio.contract', state.contract);
-        notice('Folio deployed on Aevum');
-      });
-      break;
     case 'filter': state.filter = filter; render(); break;
     case 'refresh': void loadList(); break;
     case 'previous':
