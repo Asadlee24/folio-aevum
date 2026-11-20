@@ -39,6 +39,7 @@ function enrich(invoice, memo) {
 }
 
 function render() {
+  const previousDialog = app.querySelector('dialog')?.getAttribute('aria-labelledby');
   const dialog = state.dialog === 'new' ? ui.createDialog(state) :
     state.dialog === 'ready' ? ui.readyDialog(state.ready, invoiceLink(state.ready)) : '';
   app.innerHTML = (state.view === 'checkout' ? ui.checkout(state, state.current, state.current ? invoiceLink(state.current) : location.href) :
@@ -46,6 +47,7 @@ function render() {
 
   const element = app.querySelector('dialog');
   if (element) {
+    element.classList.toggle('entering', previousDialog !== element.getAttribute('aria-labelledby'));
     element.showModal();
     element.addEventListener('cancel', (event) => {
       event.preventDefault();
@@ -175,17 +177,9 @@ async function loadFeatured(version) {
     const item = enrich(await chain.getInvoice(contract, id), [merchant, title]);
     if (version !== routeVersion) return;
     state.featured = { ...item, state: model.invoiceStatus(item), url: invoiceLink(item) };
-    if (state.view === 'invoices' && !state.dialog && !state.busy) {
-      const hero = app.querySelector('.hero');
-      const invoice = hero?.querySelector('.invoice-float');
-      if (invoice && !invoice.contains(document.activeElement)) {
-        const template = document.createElement('template');
-        template.innerHTML = ui.hero(state);
-        invoice.replaceChildren(...template.content.querySelector('.invoice-float').childNodes);
-        hero.querySelector('.hero-example')?.remove();
-        const example = template.content.querySelector('.hero-example');
-        if (example) hero.querySelector('.hero-actions').append(example);
-      }
+    const featured = app.querySelector('#featured-invoice');
+    if (featured && !featured.contains(document.activeElement)) {
+      featured.innerHTML = ui.featuredInvoice(state.featured);
     }
   } catch { /* The workspace remains usable when Aevum is temporarily unavailable. */ }
 }
@@ -204,6 +198,13 @@ async function loadRoute() {
   clearInterval(receiptTimer);
   if (!liveId) {
     state.view = 'invoices';
+    if (params.get('new') === '1' && state.contract) {
+      state.dialog = 'new';
+      params.delete('new');
+      const url = new URL(location.href);
+      url.search = params.toString();
+      history.replaceState(history.state, '', url.href);
+    }
     void loadFeatured(version);
     render();
     await loadList();
@@ -306,27 +307,6 @@ async function pay() {
   });
 }
 
-const canTilt = matchMedia('(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)');
-
-app.addEventListener('pointermove', (event) => {
-  if (!canTilt.matches || event.pointerType === 'touch') return;
-  const scene = event.target.closest('[data-invoice-scene]');
-  if (!scene) return;
-
-  const bounds = scene.getBoundingClientRect();
-  const x = (event.clientX - bounds.left) / bounds.width - 0.5;
-  const y = (event.clientY - bounds.top) / bounds.height - 0.5;
-  scene.style.setProperty('--tilt-y', (x * 21).toFixed(1) + 'deg');
-  scene.style.setProperty('--tilt-x', (y * -16).toFixed(1) + 'deg');
-});
-
-app.addEventListener('pointerout', (event) => {
-  const scene = event.target.closest('[data-invoice-scene]');
-  if (!scene || (event.relatedTarget instanceof Node && scene.contains(event.relatedTarget))) return;
-  scene.style.removeProperty('--tilt-x');
-  scene.style.removeProperty('--tilt-y');
-});
-
 app.addEventListener('input', (event) => {
   const target = event.target;
   if (target.id === 'invoice-search') {
@@ -367,11 +347,6 @@ app.addEventListener('click', (event) => {
       if (!state.contract) {
         settings();
         notice('Set up the Folio contract first.');
-      } else if (!state.account) {
-        void run(async () => {
-          await connect();
-          state.dialog = 'new';
-        });
       } else { state.dialog = 'new'; clearMessage(); render(); }
       break;
     case 'close': closeDialog(); break;

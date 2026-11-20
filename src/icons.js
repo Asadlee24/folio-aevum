@@ -24,5 +24,7 @@ import i22 from "lucide-static/icons/triangle-alert.svg";
 import i23 from "lucide-static/icons/loader-circle.svg";
 import i24 from "lucide-static/icons/inbox.svg";
 import i25 from "lucide-static/icons/menu.svg";
-const icons = { "plus": i0, "wallet": i1, "copy": i2, "check": i3, "circle-help": i4, "file-text": i5, "layout-grid": i6, "link-2": i7, "external-link": i8, "receipt": i9, "shield-check": i10, "x": i11, "play": i12, "layers": i13, "chevron-down": i14, "clock": i15, "globe": i16, "arrow-left": i17, "circle-check": i18, "settings": i19, "credit-card": i20, "search": i21, "triangle-alert": i22, "loader-circle": i23, "inbox": i24, "menu": i25 };
+import chevronRight from "lucide-static/icons/chevron-right.svg";
+import refresh from "lucide-static/icons/refresh-cw.svg";
+const icons = { "chevron-right": chevronRight, "refresh-cw": refresh, "plus": i0, "wallet": i1, "copy": i2, "check": i3, "circle-help": i4, "file-text": i5, "layout-grid": i6, "link-2": i7, "external-link": i8, "receipt": i9, "shield-check": i10, "x": i11, "play": i12, "layers": i13, "chevron-down": i14, "clock": i15, "globe": i16, "arrow-left": i17, "circle-check": i18, "settings": i19, "credit-card": i20, "search": i21, "triangle-alert": i22, "loader-circle": i23, "inbox": i24, "menu": i25 };
 export const icon = (name) => (icons[name] ?? "").replace("<svg", "<svg aria-hidden=\"true\" focusable=\"false\"");

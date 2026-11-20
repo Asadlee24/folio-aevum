@@ -15,7 +15,14 @@ const button = (text, action, options = {}) => {
     (action ? ' data-action="' + action + '"' : '') + (disabled ? ' disabled' : '') + ' ' + attrs + '>' +
     (symbol ? icon(symbol) : '') + '<span>' + text + '</span></button>';
 };
-export const newButton = () => button('New invoice', 'new', { symbol: 'plus', className: 'primary' });
+function newButton() {
+  const url = new URL('/', location.origin);
+  url.searchParams.set('new', '1');
+  const link = mobileWalletLink(url.href);
+  return link
+    ? `<a class="button primary" href="${link}">${icon('plus')}<span>New invoice</span></a>`
+    : button('New invoice', 'new', { symbol: 'plus', className: 'primary' });
+}
 const clock = '<span class="network-dot" aria-hidden="true"></span>';
 const external = (label, url) => '<a class="external" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' + label + ' ' + icon('external-link') + '</a>';
 const tabs = [['all', 'All invoices'], ['open', 'Unpaid'], ['paid', 'Paid'], ['closed', 'Closed']];
@@ -27,60 +34,32 @@ export function badge(status) {
 
 export function header(state, checkout = false) {
   const network = '<span class="net">' + clock + ' Aevum Testnet</span>';
-  return '<header class="mast"><div class="mast-inner">' + brand +
-    (checkout ? '<div class="mast-end">' + network + '</div>' :
-      '<nav aria-label="Workspace" class="primary-nav">' +
-      '<button data-action="home" ' + (state.view === 'invoices' ? 'aria-current="page"' : '') + '>' + icon('layout-grid') + 'Invoices</button>' +
-      '<button data-action="settings" ' + (state.view === 'settings' ? 'aria-current="page"' : '') + '>' + icon('settings') + 'Setup &amp; help</button>' +
-      '</nav><div class="mast-end">' + network +
-      walletAction(state.account ? esc(shortAddress(state.account)) : 'Connect wallet', 'connect', 'secondary wallet-button', false,
-        state.account ? 'aria-label="Connected wallet ' + esc(shortAddress(state.account)) + '"' : '') + '</div>') + '</div></header>';
+  const nav = checkout ? '' : `<nav aria-label="Workspace" class="primary-nav">
+    <button data-action="home" ${state.view === 'invoices' ? 'aria-current="page"' : ''}>Invoices</button>
+    <button data-action="settings" ${state.view === 'settings' ? 'aria-current="page"' : ''}>Setup &amp; help</button>
+  </nav>`;
+  return '<header class="mast"><div class="mast-inner">' + brand + nav + network + '</div></header>';
 }
 
-export function hero(state) {
-  const featured = state.featured;
-  const paid = featured?.state === 'paid';
-  const card = featured ? `<a class="featured-invoice" href="${esc(featured.url)}">
-    <span class="featured-top"><span>${icon('receipt')} Invoice #${esc(featured.id)}</span>${badge(featured.state)}</span>
-    <span class="featured-title">${paid ? 'Amount received' : 'Invoice total'}</span>
-    <strong>${price(featured.amount)} <small>tUSD8</small></strong>
-    <span class="featured-bottom"><span>${esc(featured.merchant || shortAddress(featured.issuer))}</span><span>${paid ? 'Open receipt' : 'Open invoice'} ${icon('external-link')}</span></span>
-  </a>` : `<div class="featured-invoice" aria-hidden="true">
-    <span class="featured-top"><span>${icon('receipt')} Folio</span></span>
-    <span class="featured-title">Settlement currency</span>
-    <strong>tUSD8</strong>
-    <span class="featured-bottom"><span>Aevum Testnet</span>${icon('shield-check')}</span>
-  </div>`;
-
-  return `
-    <section class="hero" aria-labelledby="home-title">
-      <div class="hero-copy">
-        <h1 id="home-title">Send an invoice.<br><em>Keep the proof.</em></h1>
-        <p>Send a payment link and give clients a receipt they can verify on Aevum.</p>
-        <div class="hero-actions">
-          ${newButton()}
-          ${featured ? `<a class="hero-example" href="${esc(featured.url)}">${paid ? 'See live receipt' : 'See live invoice'}</a>` : ''}
-        </div>
-      </div>
-      <div class="hero-graphic" data-invoice-scene>
-        <div class="scene-orbit" aria-hidden="true"></div>
-        <div class="invoice-stage">
-          <div class="invoice-float">
-            <div class="invoice-stack" aria-hidden="true">
-              <div class="invoice-layer"></div><div class="invoice-layer"></div>
-            </div>
-            ${card}
-            <div class="invoice-coin" aria-hidden="true">${icon('shield-check')}</div>
-          </div>
-        </div>
-      </div>
-    </section>`;
+export function featuredInvoice(featured) {
+  if (!featured) return '';
+  const paid = featured.state === 'paid';
+  return `<section class="example-section" aria-labelledby="example-title">
+    <h2 id="example-title">${paid ? 'Live receipt' : 'Live invoice'}</h2>
+    <a class="example-row" href="${esc(featured.url)}">
+      <span class="setting-icon">${icon(paid ? 'check' : 'receipt')}</span>
+      <span class="example-name"><strong>${esc(featured.merchant || shortAddress(featured.issuer))}</strong>
+        <small>Invoice #${esc(featured.id)}</small></span>
+      <span class="example-value"><strong>${price(featured.amount)} <small>tUSD8</small></strong>${badge(featured.state)}</span>
+      <span class="example-chevron">${icon('chevron-right')}</span>
+    </a>
+  </section>`;
 }
 
-function tableRow(invoice, index) {
+function tableRow(invoice) {
   const status = invoiceStatus(invoice);
   return '<tr><td><button class="invoice-name" data-action="open" data-id="' + esc(invoice.id) + '">' +
-    '<span class="row-icon tone-' + (index % 4) + '">' + icon('file-text') + '</span><span><strong>' + esc(invoice.title || 'Invoice #' + invoice.id) +
+    '<span class="row-icon">' + icon('file-text') + '</span><span><strong>' + esc(invoice.title || 'Invoice #' + invoice.id) +
     '</strong><small>' + esc(invoice.merchant || shortAddress(invoice.issuer)) + '</small></span></button></td>' +
     '<td class="row-amount"><strong>' + price(invoice.amount) + '</strong> <small>tUSD8</small></td>' +
     '<td class="row-status">' + badge(status) + '</td><td class="row-date">' + dateText(invoice.dueAt) + '</td>' +
@@ -96,18 +75,14 @@ function invoiceTable(collection, state) {
       String(value ?? '').toLowerCase().includes(state.query.toLowerCase())));
   });
   if (!filtered.length) {
-    if (state.loading) return '<div class="empty">' + icon('loader-circle') + '<p>Loading invoices from Aevum…</p></div>';
+    if (state.loading) return '<div class="empty" role="status">' + icon('loader-circle') + '<p>Loading invoices from Aevum…</p></div>';
     const title = state.account ? (collection.length ? 'No matching invoices' : 'No invoices yet') : 'Connect your wallet';
     const detail = state.account ? (collection.length ? 'Clear the search or pick another status.' : 'Create your first invoice to get a shareable payment link.') :
       'Your issued invoices and receipts will appear here.';
-    const action = state.account
-      ? button('New invoice', 'new', { symbol: 'plus' })
-      : walletAction('Connect wallet', 'connect');
-
     return `<div class="empty empty-workspace">
       <span class="setting-icon">${icon(state.account ? 'inbox' : 'wallet')}</span>
-      <div class="empty-copy"><h3>${title}</h3><p>${detail}</p></div>
-      ${collection.length ? '' : action}
+      <div class="empty-copy"><h2>${title}</h2><p>${detail}</p></div>
+      ${state.account ? '' : walletAction('Connect wallet', 'connect')}
     </div>`;
   }
   return '<table><thead><tr><th scope="col">Invoice</th><th scope="col">Amount</th><th scope="col">Status</th>' +
@@ -116,17 +91,23 @@ function invoiceTable(collection, state) {
 }
 
 export function workspace(state, collection) {
-  return header(state) + '<main class="workspace" id="main">' + hero(state) +
-    '<section class="invoices" aria-labelledby="invoice-title"><div class="section-head"><div><h2 id="invoice-title">Invoices</h2>' +
-    '</div>' +
-    (state.account ? button('Refresh invoices', 'refresh', { symbol: 'layout-grid', className: 'secondary refresh-button' }) : '') + '</div>' +
-    '<div class="table-frame">' + (state.account && collection.length ? '<div class="table-controls"><div class="filters" aria-label="Filter invoices">' +
+  return header(state) + `<main class="workspace" id="main">
+    <section class="invoices" aria-labelledby="invoice-title">
+      <div class="section-head">
+        <div><h1 id="invoice-title">Invoices</h1><p>Share payment links.</p></div>
+        ${newButton()}
+      </div>
+      ${state.account ? `<div class="invoice-toolbar">
+        <span class="account-label">${icon('wallet')} <span>${esc(shortAddress(state.account))}</span></span>
+        ${button('Refresh', 'refresh', { symbol: 'refresh-cw', className: 'secondary refresh-button', disabled: state.loading })}
+      </div>` : ''}
+      <div class="table-frame">` + (state.account && collection.length ? '<div class="table-controls"><div class="filters" aria-label="Filter invoices">' +
     tabs.map(([value, label]) => '<button data-action="filter" data-filter="' + value + '" aria-pressed="' + (state.filter === value) + '">' + label + '</button>').join('') +
-    '</div><label class="search">' + icon('search') + '<span class="sr-only">Search invoices</span><input type="search" id="invoice-search" placeholder="Find an invoice" value="' + esc(state.query) + '"></label></div>' : '') + '<div id="invoice-table">' + invoiceTable(collection, state) + '</div>' +
+    '</div><label class="search">' + icon('search') + '<span class="sr-only">Search invoices</span><input type="search" id="invoice-search" placeholder="Find an invoice" value="' + esc(state.query) + '"></label></div>' : '') + '<div id="invoice-table" aria-busy="' + state.loading + '">' + invoiceTable(collection, state) + '</div>' +
     (state.count > 10 ? '<div class="pagination">' +
       button('Previous', 'previous', { disabled: state.offset === 0 }) + '<span>' + (state.offset + 1) + '–' + Math.min(state.offset + 10, state.count) + ' of ' + state.count + '</span>' +
       button('Next', 'next', { disabled: state.offset + 10 >= state.count }) + '</div>' : '') +
-    '</div></section></main>' + footer();
+    '</div></section><div id="featured-invoice">' + featuredInvoice(state.featured) + '</div></main>' + footer();
 }
 
 export const refreshTable = (state, collection) => {
@@ -141,11 +122,11 @@ function footer() {
 
 export function settings(state) {
   return header(state) + `<main class="workspace setup-page">
-    <div class="setup-intro"><div class="eyebrow">WORKSPACE SETTINGS</div><h1>Setup &amp; help</h1></div>
+    <div class="setup-intro"><h1>Setup &amp; help</h1></div>
     <div class="settings-grid">
       <section class="setting"><div class="setting-icon">${icon('receipt')}</div><h2>How payments work</h2>
         <p>Issue an invoice with a fixed amount and due date. Your client pays your wallet directly, and the invoice link becomes a verifiable receipt.</p>
-        <div class="mode-options">${button('New invoice', 'new', { symbol: 'plus' })}</div>
+        <div class="mode-options">${newButton()}</div>
       </section>
       <section class="setting"><div class="setting-icon">${icon('wallet')}</div><h2>Wallet and test tokens</h2>
         <p>tQDAY covers testnet gas and tUSD8 is the currency used for invoice payments.</p>
@@ -186,7 +167,7 @@ export function createDialog(state) {
 export function readyDialog(invoice, link) {
   return `<dialog class="composer" aria-labelledby="ready-title">
     <div class="composer-top"><div class="setting-icon success">${icon('check')}</div><button class="icon-button close" data-action="close" aria-label="Close">${icon('x')}</button></div>
-    <div class="dialog-title"><h2 id="ready-title">Invoice ready.</h2><p>Share this link so your client can review the invoice and pay.</p></div>
+    <div class="dialog-title"><h2 id="ready-title">Invoice ready</h2><p>Share this link so your client can review the invoice and pay.</p></div>
     <div class="summary"><strong>${esc(invoice.title || 'Invoice #' + invoice.id)}</strong><span>${price(invoice.amount)} tUSD8</span></div>
     <label class="link-label" for="share-url">Client link</label><div class="share-row"><input id="share-url" readonly value="${esc(link)}">
     ${button('Copy', 'copy-ready', { symbol: 'copy', className: 'primary' })}</div>
@@ -267,11 +248,16 @@ export function checkout(state, invoice, link) {
       </section>${invoiceProof(invoice, status)}`) + '</main>' + footer();
 }
 
-function walletAction(label, action, style = 'secondary', busy = false, attrs = '') {
+function mobileWalletLink(url) {
   const phone = /iphone|android|ipad/i.test(navigator.userAgent);
-  if (!busy && !window.ethereum && phone && location.protocol === 'https:') {
-    const dapp = esc(location.href.slice('https://'.length));
-    return `<a class="button ${style}" href="https://metamask.app.link/dapp/${dapp}">${icon('wallet')}<span>Open in MetaMask</span></a>`;
+  if (!window.ethereum && phone && url.startsWith('https://')) {
+    return 'https://metamask.app.link/dapp/' + esc(url.slice('https://'.length));
   }
-  return button(label, action, { symbol: 'wallet', className: style, disabled: busy, attrs });
+  return '';
+}
+
+function walletAction(label, action, style = 'secondary', busy = false) {
+  const link = busy ? '' : mobileWalletLink(location.href);
+  if (link) return `<a class="button ${style}" href="${link}">${icon('wallet')}<span>Open in MetaMask</span></a>`;
+  return button(label, action, { symbol: 'wallet', className: style, disabled: busy });
 }
