@@ -56,6 +56,40 @@ export function featuredInvoice(featured) {
   </section>`;
 }
 
+const paymentSteps = [
+  ['file-text', 'Create an invoice', 'Set an amount in tUSD8 and choose when payment is due.'],
+  ['link-2', 'Share the payment link', 'Your client opens the link and pays directly to your wallet.'],
+  ['shield-check', 'Verify the receipt', 'After payment confirms, the same link opens a receipt with proof on Aevum Explorer.'],
+];
+
+function paymentGuide() {
+  return `<section class="payment-guide" aria-labelledby="payment-guide-title">
+    <h2 id="payment-guide-title">From invoice to receipt</h2>
+    <div class="paper-scene" aria-hidden="true">
+      <div class="paper-shadow"></div>
+      <div class="paper-stack">
+        <div class="paper-sheet paper-back"></div>
+        <div class="paper-sheet paper-middle"></div>
+        <div class="paper-sheet paper-front">
+          <span class="paper-fold"></span>
+          <span class="paper-icon">${icon('receipt')}</span>
+          <span class="paper-lines"></span>
+        </div>
+        <span class="paper-seal">${icon('check')}</span>
+      </div>
+    </div>
+    <div class="payment-guide-content">
+      <ol class="payment-steps">
+        ${paymentSteps.map(([symbol, title, detail]) => `<li>
+          <span class="setting-icon">${icon(symbol)}</span>
+          <div><h3>${title}</h3><p>${detail}</p></div>
+        </li>`).join('')}
+      </ol>
+      ${button('Setup &amp; help', 'settings', { symbol: 'circle-help' })}
+    </div>
+  </section>`;
+}
+
 function tableRow(invoice) {
   const status = invoiceStatus(invoice);
   return '<tr><td><button class="invoice-name" data-action="open" data-id="' + esc(invoice.id) + '">' +
@@ -107,7 +141,7 @@ export function workspace(state, collection) {
     (state.count > 10 ? '<div class="pagination">' +
       button('Previous', 'previous', { disabled: state.offset === 0 }) + '<span>' + (state.offset + 1) + '–' + Math.min(state.offset + 10, state.count) + ' of ' + state.count + '</span>' +
       button('Next', 'next', { disabled: state.offset + 10 >= state.count }) + '</div>' : '') +
-    '</div></section><div id="featured-invoice">' + featuredInvoice(state.featured) + '</div></main>' + footer();
+    '</div></section><div id="featured-invoice">' + featuredInvoice(state.featured) + '</div>' + paymentGuide() + '</main>' + footer();
 }
 
 export const refreshTable = (state, collection) => {
@@ -122,7 +156,7 @@ function footer() {
 
 export function settings(state) {
   return header(state) + `<main class="workspace setup-page">
-    <div class="setup-intro"><h1>Setup &amp; help</h1></div>
+    <div class="setup-intro"><h1 tabindex="-1">Setup &amp; help</h1></div>
     <div class="settings-grid">
       <section class="setting"><div class="setting-icon">${icon('receipt')}</div><h2>How payments work</h2>
         <p>Issue an invoice with a fixed amount and due date. Your client pays your wallet directly, and the invoice link becomes a verifiable receipt.</p>
