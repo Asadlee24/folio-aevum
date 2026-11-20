@@ -21,13 +21,12 @@ Open http://localhost:8080. Folio runs on Aevum Testnet. Connect a wallet to iss
 
 ## Run on Aevum Testnet
 
-1. In **Setup & help**, choose **Aevum Testnet** and connect an EIP-1193 browser wallet. On a phone, open the app inside the wallet's browser.
+1. In **Setup & help**, connect an EIP-1193 browser wallet and approve switching to Aevum Testnet if prompted. On a phone, open Folio in MetaMask.
 2. Get testnet tQDAY for gas and tUSD8 from the [QDay faucet](https://faucet.qday.info). The QDay challenge page also documents the Discord faucet for verified members.
-3. Use the Folio contract already configured in the app. **Setup & help** also supports an alternate Folio deployment.
-4. Create an invoice and open the share link from a second funded test wallet. Confirm a token approval if prompted, then confirm the payment.
-5. Open the receipt and select **Verify on Aevum Explorer**. Check the invoice ID, payer, issuer and transfer amount.
+3. Create an invoice and open the share link from a second funded test wallet. Confirm a token approval if prompted, then confirm the payment.
+4. Open the receipt and select **Verify on Aevum Explorer**. Check the invoice ID, payer, issuer and transfer amount.
 
-To publish a site with a default deployment, deploy from a dedicated test wallet using `npm run deploy:aevum` with `FOLIO_TESTNET_PRIVATE_KEY` set in your shell. Set `FOLIO_AEVUM_CONTRACT` to the returned contract address in your Vercel project environment (or your local shell), then rebuild and deploy. Keep private keys out of the repository. For an app-managed deployment, the contract address is stored locally and included in every invoice link.
+Folio uses the deployed contract below. To publish a separate instance, deploy from a dedicated test wallet using `npm run deploy:aevum` with `FOLIO_TESTNET_PRIVATE_KEY` set in your shell. Set `FOLIO_AEVUM_CONTRACT` to the returned contract address in your Vercel project environment (or your local shell), then rebuild and deploy. Keep private keys out of the repository. Each invoice link retains the contract address used to create it.
 
 ## Aevum deployment
 

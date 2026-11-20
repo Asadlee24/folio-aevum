@@ -1,5 +1,5 @@
 import {
-  BrowserProvider, Contract, ContractFactory, Interface, JsonRpcProvider, formatUnits,
+  BrowserProvider, Contract, Interface, JsonRpcProvider, formatUnits,
   getAddress, isAddress, keccak256, parseUnits, toUtf8Bytes,
 } from 'ethers';
 import artifact from './contract.generated.json';
@@ -108,18 +108,6 @@ export async function receiptHash(invoice) {
   const c = await verifyContract(invoice.contract);
   const events = await c.queryFilter(c.filters.InvoicePaid(invoice.id), invoice.paidBlock, invoice.paidBlock);
   return events[0]?.transactionHash ?? '';
-}
-
-export async function deployFolio(signer, progress) {
-  const factory = new ContractFactory(artifact.abi, artifact.bytecode, signer);
-  progress('Confirm contract deployment in your wallet…');
-  const instance = await factory.deploy(TOKEN);
-  const tx = instance.deploymentTransaction();
-  progress('Confirming deployment on Aevum…', tx.hash);
-  await confirmed(tx.hash);
-  const address = await instance.getAddress();
-  await verifyContract(address);
-  return address;
 }
 
 export async function issueInvoice(address, signer, values, progress) {
