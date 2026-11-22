@@ -54,10 +54,38 @@ function render() {
   app.innerHTML = (state.view === 'checkout' ? ui.checkout(state, state.current, state.current ? invoiceLink(state.current) : location.href) :
     state.view === 'settings' ? ui.settings(state) : ui.workspace(state, state.live)) + dialog;
   // Play the optional document reveal once, not on each wallet/list render.
-  const heroVisual = app.querySelector('.hero-visual');
+  const heroVisual = app.querySelector('.glass-stage');
   if (heroVisual && !firstHeroRendered) {
     heroVisual.classList.add('hero-first-entry');
     firstHeroRendered = true;
+  }
+  if (heroVisual && matchMedia('(hover: hover) and (pointer: fine)').matches &&
+      !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    let lastX = 0;
+    let lastY = 0;
+    let frame = 0;
+    heroVisual.addEventListener('pointermove', (event) => {
+      lastX = event.clientX;
+      lastY = event.clientY;
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        if (!heroVisual.isConnected) return;
+        const rect = heroVisual.getBoundingClientRect();
+        const x = Math.max(-1, Math.min(1, 2 * (lastX - rect.left) / rect.width - 1));
+        const y = Math.max(-1, Math.min(1, 2 * (lastY - rect.top) / rect.height - 1));
+        heroVisual.classList.add('is-tilting');
+        heroVisual.style.setProperty('--rx', (-y * 5).toFixed(2) + 'deg');
+        heroVisual.style.setProperty('--ry', (x * 7).toFixed(2) + 'deg');
+      });
+    });
+    heroVisual.addEventListener('pointerleave', () => {
+      if (frame) cancelAnimationFrame(frame);
+      frame = 0;
+      heroVisual.classList.remove('is-tilting');
+      heroVisual.style.removeProperty('--rx');
+      heroVisual.style.removeProperty('--ry');
+    });
   }
 
   const element = app.querySelector('dialog');
