@@ -21,6 +21,7 @@ let listVersion = 0;
 let toastTimer;
 let receiptTimer;
 let issuingWallet = null;
+let firstHeroRendered = false;
 
 function invoiceLink(invoice) {
   const url = new URL('/', location.origin);
@@ -52,6 +53,12 @@ function render() {
     state.dialog === 'ready' ? ui.readyDialog(state.ready, invoiceLink(state.ready)) : '';
   app.innerHTML = (state.view === 'checkout' ? ui.checkout(state, state.current, state.current ? invoiceLink(state.current) : location.href) :
     state.view === 'settings' ? ui.settings(state) : ui.workspace(state, state.live)) + dialog;
+  // Play the optional document reveal once, not on each wallet/list render.
+  const heroVisual = app.querySelector('.hero-visual');
+  if (heroVisual && !firstHeroRendered) {
+    heroVisual.classList.add('hero-first-entry');
+    firstHeroRendered = true;
+  }
 
   const element = app.querySelector('dialog');
   if (element) {

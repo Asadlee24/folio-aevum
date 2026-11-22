@@ -571,7 +571,7 @@ input:not([type=search]):focus-visible,select:focus-visible { border-color: #648
 .external,.payment-guide-content > .button { color: #2e609c; }
 .external:hover { color: #174b83; }
 @media (prefers-reduced-motion: no-preference) {
-  .hero-visual { animation: document-arrival .45s ease-out both; }
+  .hero-visual.hero-first-entry { animation: document-arrival .45s ease-out both; }
   @keyframes document-arrival { from { opacity: .88; transform: translateY(13px); } to { opacity: 1; transform: translateY(0); } }
 }
 @media (max-width: 910px) {
