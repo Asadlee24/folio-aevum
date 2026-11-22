@@ -63,74 +63,71 @@ const paymentSteps = [
 ];
 
 
-
 function paymentGuide() {
   return `<section class="payment-guide" aria-labelledby="payment-guide-title">
-    <div class="guide-heading">
-      <span class="guide-overline">Made for the entire payment journey</span>
-      <h2 id="payment-guide-title">From sent to settled.<br>Nothing complicated.</h2>
-      <p>Create a request, share one link, and keep a receipt that can be checked on Aevum Explorer.</p>
-    </div>
+    <h2 id="payment-guide-title">From invoice to receipt.</h2>
     <ol class="glass-steps">
-      ${paymentSteps.map(([symbol, title, detail], index) => `<li class="glass-step">
-        <div class="glass-step-top"><span class="glass-step-icon">${icon(symbol)}</span><span class="glass-step-number">0${index + 1}</span></div>
+      ${paymentSteps.map(([symbol, title, detail]) => `<li class="glass-step">
+        <span class="glass-step-icon">${icon(symbol)}</span>
         <h3>${title}</h3><p>${detail}</p>
       </li>`).join('')}
     </ol>
-    <div class="guide-bottom"><span>${icon('shield-check')} Transactions are on Aevum Testnet using test tokens.</span>${button('Setup &amp; help', 'settings', { symbol: 'circle-help' })}</div>
+    <div class="guide-bottom"><span>${icon('shield-check')} Transactions use Aevum test tokens.</span>${button('Setup &amp; help', 'settings', { symbol: 'circle-help' })}</div>
   </section>`;
 }
 
-function hero() {
+function hero(preview) {
+  const paid = preview === 'receipt';
   return `<section class="folio-hero" aria-labelledby="hero-title">
     <div class="hero-copy">
-      <div class="hero-kicker"><span class="hero-kicker-mark">${icon('check')}</span> Your work deserves an easier payday.</div>
-      <h1 id="hero-title">Invoicing,<br><span>beautifully simple.</span></h1>
-      <p class="hero-description">Create an invoice in moments. Share one link. When your client pays, the same link becomes a verifiable receipt.</p>
+      <h1 id="hero-title">Send an invoice.<br><span>Share a receipt.</span></h1>
+      <p class="hero-description">Send your client one payment link. Once they pay, that same link becomes a receipt they can verify on Aevum.</p>
       <div class="hero-actions">
         ${newButton()}
-        <a class="hero-secondary" href="#payment-guide-title">See how it works ${icon('chevron-right')}</a>
+        <a class="hero-secondary" href="#payment-guide-title">How it works ${icon('chevron-down')}</a>
       </div>
-      <div class="hero-footnote">${icon('shield-check')} <span>Built on Aevum Testnet</span><span class="hero-footnote-sep" aria-hidden="true"></span><span>Test tokens only</span></div>
+      <p class="hero-footnote">${icon('shield-check')} Testnet payments use test tokens</p>
     </div>
-    <div class="glass-stage" role="img" aria-label="3D glass-style preview of a Folio invoice for 250 tUSD8, with a floating receipt card. This is an example, not a real invoice.">
-      <div class="glass-orb glass-orb--blue" aria-hidden="true"></div>
-      <div class="glass-orb glass-orb--violet" aria-hidden="true"></div>
-      <div class="glass-sheen" aria-hidden="true"></div>
-      <div class="glass-stack" aria-hidden="true">
-        <div class="glass-layer glass-layer--rear"></div>
-        <div class="glass-layer glass-layer--middle"></div>
-        <div class="glass-invoice">
-          <div class="glass-invoice-top">
-            <span class="glass-logo"><img src="/assets/folio-mark.png" width="29" height="29" alt=""><strong>folio<span>.</span></strong></span>
-            <span class="glass-invoice-tag">Invoice preview</span>
-          </div>
-          <div class="glass-invoice-client">
-            <span>Prepared for</span>
-            <strong>Studio North</strong>
-            <small>Brand identity &amp; direction</small>
-          </div>
-          <div class="glass-invoice-lines">
-            <div><span>Service</span><strong>Creative direction</strong></div>
-            <div><span>Payment window</span><strong>7 days</strong></div>
-          </div>
-          <div class="glass-invoice-amount">
-            <span>Amount due</span>
-            <strong>250.00 <small>tUSD8</small></strong>
-          </div>
-          <div class="glass-invoice-bottom">
-            <span class="glass-invoice-status"><i aria-hidden="true"></i> Awaiting payment</span>
-            <span>Aevum Testnet</span>
-          </div>
-        </div>
-        <div class="glass-receipt">
-          <span class="glass-receipt-icon">${icon('shield-check')}</span>
-          <span class="glass-receipt-copy"><small>After payment</small><strong>Verifiable receipt</strong></span>
-          <span class="glass-receipt-arrow">${icon('check')}</span>
+    <section class="glass-stage" aria-labelledby="preview-title">
+      <div class="preview-header">
+        <h2 id="preview-title">Payment preview</h2>
+        <div class="preview-switch" role="group" aria-label="Document preview">
+          ${button('Invoice', 'preview', { symbol: 'file-text', className: 'preview-toggle', attrs: `data-id="invoice" aria-controls="preview-document" aria-pressed="${!paid}"` })}
+          ${button('Receipt', 'preview', { symbol: 'receipt', className: 'preview-toggle', attrs: `data-id="receipt" aria-controls="preview-document" aria-pressed="${paid}"` })}
         </div>
       </div>
-      <div class="glass-stage-caption">AN INTERACTIVE PREVIEW · NOT A LIVE INVOICE</div>
-    </div>
+      <div class="preview-scene" data-preview="${preview}">
+        <div class="glass-arrival">
+          <div class="glass-stack">
+            <div class="glass-layer glass-layer--rear" aria-hidden="true"></div>
+            <div class="glass-layer glass-layer--middle" aria-hidden="true"></div>
+            <div class="preview-document" id="preview-document" aria-live="polite" aria-atomic="true">
+              <div class="document-face document-invoice" ${paid ? 'aria-hidden="true" inert' : ''}>
+                <div class="document-header"><span class="document-brand">${mark} folio.</span><span>INVOICE</span></div>
+                <p class="document-label">Billed to</p>
+                <h3>Studio North</h3>
+                <dl class="document-lines"><div><dt>Brand identity design</dt><dd>250.00</dd></div></dl>
+                <div class="document-total"><span>Amount due</span><strong>250.00 <small>tUSD8</small></strong></div>
+                <span class="document-note">Due in 7 days</span>
+              </div>
+              <div class="document-face document-receipt" ${paid ? '' : 'aria-hidden="true" inert'}>
+                <div class="document-header"><span class="document-brand">${mark} folio.</span><span>RECEIPT</span></div>
+                <p class="document-label">Received from</p>
+                <h3>Studio North</h3>
+                <dl class="document-lines"><div><dt>Brand identity design</dt><dd>250.00</dd></div></dl>
+                <div class="document-total"><span>Amount paid</span><strong>250.00 <small>tUSD8</small></strong></div>
+                <span class="document-note">${icon('shield-check')} Aevum Testnet receipt preview</span>
+              </div>
+            </div>
+            <div class="preview-status" aria-hidden="true">
+              <span class="preview-status-icon">${icon('clock')}${icon('shield-check')}</span>
+              <span><small>Payment status</small><strong class="preview-unpaid">Awaiting payment</strong><strong class="preview-paid">Payment confirmed</strong></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="preview-caption">Sample data · No transaction</p>
+    </section>
   </section>`;
 }
 
@@ -170,10 +167,10 @@ function invoiceTable(collection, state) {
 
 export function workspace(state, collection) {
   return header(state) + `<main class="workspace" id="main" tabindex="-1">
-    ${hero()}
+    ${hero(state.preview)}
     <section class="invoices" aria-labelledby="invoice-title">
       <div class="section-head">
-        <div><h2 id="invoice-title">Your workspace</h2><p>Invoices, receipts, and everything in between.</p></div>
+        <div><h2 id="invoice-title">Your workspace</h2><p>Manage your invoices and receipts.</p></div>
         ${newButton()}
       </div>
       ${state.account ? `<div class="invoice-toolbar">

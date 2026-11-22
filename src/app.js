@@ -10,6 +10,7 @@ const savedContract = model.readLocal('folio.contract', null);
 const workspaceContract = chain.addressOK(savedContract) ? savedContract : CONTRACT;
 const state = {
   view: 'invoices',
+  preview: 'invoice',
   account: '',
   query: '', filter: 'all', offset: 0, count: 0, live: [],
   loading: false, busy: false, error: '', progress: '', tx: '',
@@ -53,40 +54,12 @@ function render() {
     state.dialog === 'ready' ? ui.readyDialog(state.ready, invoiceLink(state.ready)) : '';
   app.innerHTML = (state.view === 'checkout' ? ui.checkout(state, state.current, state.current ? invoiceLink(state.current) : location.href) :
     state.view === 'settings' ? ui.settings(state) : ui.workspace(state, state.live)) + dialog;
-  // Play the optional document reveal once, not on each wallet/list render.
-  const heroVisual = app.querySelector('.glass-stage');
-  if (heroVisual && !firstHeroRendered) {
-    heroVisual.classList.add('hero-first-entry');
+  const scene = app.querySelector('.preview-scene');
+  if (scene && !firstHeroRendered) {
+    scene.classList.add('hero-first-entry');
     firstHeroRendered = true;
   }
-  if (heroVisual && matchMedia('(hover: hover) and (pointer: fine)').matches &&
-      !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    let lastX = 0;
-    let lastY = 0;
-    let frame = 0;
-    heroVisual.addEventListener('pointermove', (event) => {
-      lastX = event.clientX;
-      lastY = event.clientY;
-      if (frame) return;
-      frame = requestAnimationFrame(() => {
-        frame = 0;
-        if (!heroVisual.isConnected) return;
-        const rect = heroVisual.getBoundingClientRect();
-        const x = Math.max(-1, Math.min(1, 2 * (lastX - rect.left) / rect.width - 1));
-        const y = Math.max(-1, Math.min(1, 2 * (lastY - rect.top) / rect.height - 1));
-        heroVisual.classList.add('is-tilting');
-        heroVisual.style.setProperty('--rx', (-y * 5).toFixed(2) + 'deg');
-        heroVisual.style.setProperty('--ry', (x * 7).toFixed(2) + 'deg');
-      });
-    });
-    heroVisual.addEventListener('pointerleave', () => {
-      if (frame) cancelAnimationFrame(frame);
-      frame = 0;
-      heroVisual.classList.remove('is-tilting');
-      heroVisual.style.removeProperty('--rx');
-      heroVisual.style.removeProperty('--ry');
-    });
-  }
+  enablePreviewTilt(scene);
 
   const element = app.querySelector('dialog');
   if (element) {
@@ -103,6 +76,46 @@ function render() {
       control.dataset.filter === previousAction.filter &&
       control.dataset.id === previousAction.id);
     if (next && !next.disabled) next.focus({ preventScroll: true });
+  }
+}
+
+function enablePreviewTilt(scene) {
+  if (!scene || !matchMedia('(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)').matches) return;
+
+  let pointer;
+  let frame = 0;
+  scene.addEventListener('pointermove', (event) => {
+    pointer = event;
+    if (frame) return;
+    frame = requestAnimationFrame(() => {
+      frame = 0;
+      if (!scene.isConnected) return;
+      const rect = scene.getBoundingClientRect();
+      const x = (pointer.clientX - rect.left) / rect.width - .5;
+      const y = (pointer.clientY - rect.top) / rect.height - .5;
+      scene.style.setProperty('--tilt-x', `${-y * 11}deg`);
+      scene.style.setProperty('--tilt-y', `${x * 15}deg`);
+    });
+  });
+  scene.addEventListener('pointerleave', () => {
+    cancelAnimationFrame(frame);
+    frame = 0;
+    scene.style.removeProperty('--tilt-x');
+    scene.style.removeProperty('--tilt-y');
+  });
+}
+
+function selectPreview(control) {
+  state.preview = control.dataset.id;
+  const stage = control.closest('.glass-stage');
+  stage.querySelector('.preview-scene').dataset.preview = state.preview;
+  for (const button of stage.querySelectorAll('[data-action="preview"]')) {
+    button.setAttribute('aria-pressed', String(button === control));
+  }
+  for (const face of stage.querySelectorAll('.document-face')) {
+    const hidden = !face.classList.contains(`document-${state.preview}`);
+    face.inert = hidden;
+    face.setAttribute('aria-hidden', String(hidden));
   }
 }
 
@@ -383,6 +396,7 @@ app.addEventListener('click', (event) => {
       if (state.view === 'checkout') go(new URL('/', location.origin).href);
       else { state.view = 'invoices'; clearMessage(); render(); void loadList(); }
       break;
+    case 'preview': selectPreview(control); break;
     case 'new': state.dialog = 'new'; clearMessage(); render(); break;
     case 'close': closeDialog(); break;
     case 'settings': settings(); break;
