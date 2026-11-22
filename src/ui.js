@@ -90,6 +90,35 @@ function paymentGuide() {
   </section>`;
 }
 
+
+function hero() {
+  return `<section class="folio-hero" aria-labelledby="hero-title">
+    <div class="hero-copy">
+      <div class="hero-eyebrow"><span class="hero-eyebrow-mark">F /</span> A better way to get paid</div>
+      <h1 id="hero-title">Send an invoice.<br><span>Keep the proof.</span></h1>
+      <p class="hero-description">Create a payment link, get paid directly to your wallet, and give every transaction a verifiable receipt.</p>
+      <div class="hero-actions">
+        ${newButton()}
+        <a class="hero-secondary" href="#payment-guide-title">See how it works ${icon('chevron-right')}</a>
+      </div>
+      <p class="hero-disclaimer">${icon('shield-check')} Built on Aevum Testnet · Test tokens only</p>
+    </div>
+    <div class="hero-art" aria-hidden="true">
+      <div class="hero-art-head"><span class="hero-art-brand">folio<span>.</span></span><span class="hero-art-mode">INTERFACE PREVIEW</span></div>
+      <div class="hero-preview">
+        <div class="hero-preview-head"><span class="hero-preview-icon">${icon('file-text')}</span><span class="hero-preview-id">INVOICE / PREVIEW</span><span class="hero-preview-status"><i></i> Unpaid</span></div>
+        <div class="hero-preview-label">CREATIVE SERVICES</div>
+        <div class="hero-preview-title">Brand identity package</div>
+        <div class="hero-preview-subtitle">Example invoice — not a live payment</div>
+        <div class="hero-preview-rule"></div>
+        <div class="hero-preview-bottom"><div><span>AMOUNT DUE</span><strong>250.00 <small>tUSD8</small></strong></div><span class="hero-preview-arrow">${icon('chevron-right')}</span></div>
+      </div>
+      <div class="hero-proof"><span class="hero-proof-icon">${icon('shield-check')}</span><span><strong>Verifiable by design</strong><small>On-chain receipts after payment</small></span><span class="hero-proof-check">${icon('check')}</span></div>
+      <span class="hero-art-note">01 / CREATE → SHARE → VERIFY</span>
+    </div>
+  </section>`;
+}
+
 function tableRow(invoice) {
   const status = invoiceStatus(invoice);
   return '<tr><td><button class="invoice-name" data-action="open" data-id="' + esc(invoice.id) + '">' +
@@ -126,9 +155,10 @@ function invoiceTable(collection, state) {
 
 export function workspace(state, collection) {
   return header(state) + `<main class="workspace" id="main" tabindex="-1">
+    ${hero()}
     <section class="invoices" aria-labelledby="invoice-title">
       <div class="section-head">
-        <div><h1 id="invoice-title">Invoices</h1><p>Share payment links.</p></div>
+        <div><span class="section-kicker">YOUR WORKSPACE</span><h2 id="invoice-title">Invoices</h2><p>All your payment requests in one place.</p></div>
         ${newButton()}
       </div>
       ${state.account ? `<div class="invoice-toolbar">
