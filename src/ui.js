@@ -125,7 +125,7 @@ function invoiceTable(collection, state) {
 }
 
 export function workspace(state, collection) {
-  return header(state) + `<main class="workspace" id="main">
+  return header(state) + `<main class="workspace" id="main" tabindex="-1">
     <section class="invoices" aria-labelledby="invoice-title">
       <div class="section-head">
         <div><h1 id="invoice-title">Invoices</h1><p>Share payment links.</p></div>
@@ -155,7 +155,7 @@ function footer() {
 }
 
 export function settings(state) {
-  return header(state) + `<main class="workspace setup-page">
+  return header(state) + `<main class="workspace setup-page" id="main" tabindex="-1">
     <div class="setup-intro"><h1 tabindex="-1">Setup &amp; help</h1></div>
     <div class="settings-grid">
       <section class="setting"><div class="setting-icon">${icon('receipt')}</div><h2>How payments work</h2>
@@ -240,7 +240,7 @@ export function checkout(state, invoice, link) {
   const receiptTitle = paid ? 'Payment receipt' : 'Payment request';
   const amountLabel = paid ? 'AMOUNT PAID' : 'AMOUNT DUE';
 
-  return header(state, true) + '<main class="checkout-shell"><button class="back-button" data-action="home">' + icon('arrow-left') + ' Invoices</button>' +
+  return header(state, true) + '<main class="checkout-shell" id="main" tabindex="-1"><button class="back-button" data-action="home">' + icon('arrow-left') + ' Invoices</button>' +
     (!invoice ? '<section class="checkout-card">' + (state.loading ?
       '<div class="empty">' + icon('loader-circle') + '<p>Checking invoice on Aevum…</p></div>' :
       '<h1>Invoice unavailable</h1>' + progress(state) + button('Try again', 'reload-checkout')) + '</section>' :

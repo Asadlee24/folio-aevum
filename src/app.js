@@ -50,6 +50,12 @@ function enrich(invoice, memo) {
 function render() {
   paperObserver.disconnect();
   const previousDialog = app.querySelector('dialog')?.getAttribute('aria-labelledby');
+  const focusedAction = app.contains(document.activeElement) ? document.activeElement.closest?.('[data-action]') : null;
+  const previousAction = focusedAction ? {
+    action: focusedAction.dataset.action,
+    filter: focusedAction.dataset.filter,
+    id: focusedAction.dataset.id,
+  } : null;
   const dialog = state.dialog === 'new' ? ui.createDialog(state) :
     state.dialog === 'ready' ? ui.readyDialog(state.ready, invoiceLink(state.ready)) : '';
   app.innerHTML = (state.view === 'checkout' ? ui.checkout(state, state.current, state.current ? invoiceLink(state.current) : location.href) :
@@ -66,6 +72,13 @@ function render() {
       event.preventDefault();
       if (!state.busy) closeDialog();
     });
+  } else if (!previousDialog && previousAction) {
+    // Full re-renders must not strand keyboard focus on a detached control.
+    const next = [...app.querySelectorAll('[data-action]')].find((control) =>
+      control.dataset.action === previousAction.action &&
+      control.dataset.filter === previousAction.filter &&
+      control.dataset.id === previousAction.id);
+    if (next && !next.disabled) next.focus({ preventScroll: true });
   }
 }
 
