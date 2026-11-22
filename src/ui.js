@@ -45,7 +45,7 @@ export function featuredInvoice(featured) {
   if (!featured) return '';
   const paid = featured.state === 'paid';
   return `<section class="example-section" aria-labelledby="example-title">
-    <h2 id="example-title">${paid ? 'Live receipt' : 'Live invoice'}</h2>
+    <h2 id="example-title">${paid ? 'View a paid receipt' : 'Explore a live invoice'}</h2>
     <a class="example-row" href="${esc(featured.url)}">
       <span class="setting-icon">${icon(paid ? 'check' : 'receipt')}</span>
       <span class="example-name"><strong>${esc(featured.merchant || shortAddress(featured.issuer))}</strong>
@@ -62,59 +62,66 @@ const paymentSteps = [
   ['shield-check', 'Verify the receipt', 'After payment confirms, the same link opens a receipt with proof on Aevum Explorer.'],
 ];
 
+
 function paymentGuide() {
   return `<section class="payment-guide" aria-labelledby="payment-guide-title">
-    <h2 id="payment-guide-title">From invoice to receipt</h2>
-    <div class="paper-scene" aria-hidden="true">
-      <div class="paper-shadow"></div>
-      <div class="paper-stack">
-        <div class="paper-sheet paper-back"></div>
-        <div class="paper-sheet paper-middle"></div>
-        <div class="paper-sheet paper-front">
-          <span class="paper-fold"></span>
-          <span class="paper-icon">${icon('receipt')}</span>
-          <span class="paper-lines"></span>
-        </div>
-        <span class="paper-seal">${icon('check')}</span>
-      </div>
+    <div class="journey-head">
+      <h2 id="payment-guide-title">A straight line from work to payment.</h2>
+      <p>Three steps, one shareable link. The invoice becomes a verifiable receipt only after an on-chain payment.</p>
     </div>
-    <div class="payment-guide-content">
-      <ol class="payment-steps">
-        ${paymentSteps.map(([symbol, title, detail]) => `<li>
-          <span class="setting-icon">${icon(symbol)}</span>
-          <div><h3>${title}</h3><p>${detail}</p></div>
-        </li>`).join('')}
-      </ol>
-      ${button('Setup &amp; help', 'settings', { symbol: 'circle-help' })}
-    </div>
+    <ol class="journey-steps">
+      ${paymentSteps.map(([symbol, title, detail], index) => `<li>
+        <span class="journey-number">0${index + 1}</span>
+        <span class="journey-symbol">${icon(symbol)}</span>
+        <h3>${title}</h3>
+        <p>${detail}</p>
+      </li>`).join('')}
+    </ol>
+    <div class="journey-footer"><span>Built for Aevum Testnet · tUSD8 payments</span>${button('Setup &amp; help', 'settings', { symbol: 'circle-help' })}</div>
   </section>`;
 }
-
 
 function hero() {
   return `<section class="folio-hero" aria-labelledby="hero-title">
     <div class="hero-copy">
-      <div class="hero-eyebrow"><span class="hero-eyebrow-mark">F /</span> A better way to get paid</div>
-      <h1 id="hero-title">Send an invoice.<br><span>Keep the proof.</span></h1>
-      <p class="hero-description">Create a payment link, get paid directly to your wallet, and give every transaction a verifiable receipt.</p>
+      <div class="hero-status"><span class="hero-status-dot" aria-hidden="true"></span> Invoicing on Aevum Testnet</div>
+      <h1 id="hero-title">An invoice that becomes the receipt.</h1>
+      <p class="hero-description">Bill for your work, send one payment link, and give your client a verifiable record when they pay. Built for freelancers and independent studios.</p>
       <div class="hero-actions">
         ${newButton()}
-        <a class="hero-secondary" href="#payment-guide-title">See how it works ${icon('chevron-right')}</a>
+        <a class="hero-secondary" href="#payment-guide-title">How it works ${icon('chevron-right')}</a>
       </div>
-      <p class="hero-disclaimer">${icon('shield-check')} Built on Aevum Testnet · Test tokens only</p>
+      <p class="hero-disclaimer">${icon('shield-check')} Demo network only. Payments use test tokens, not real money.</p>
     </div>
-    <div class="hero-art" aria-hidden="true">
-      <div class="hero-art-head"><span class="hero-art-brand">folio<span>.</span></span><span class="hero-art-mode">INTERFACE PREVIEW</span></div>
-      <div class="hero-preview">
-        <div class="hero-preview-head"><span class="hero-preview-icon">${icon('file-text')}</span><span class="hero-preview-id">INVOICE / PREVIEW</span><span class="hero-preview-status"><i></i> Unpaid</span></div>
-        <div class="hero-preview-label">CREATIVE SERVICES</div>
-        <div class="hero-preview-title">Brand identity package</div>
-        <div class="hero-preview-subtitle">Example invoice — not a live payment</div>
-        <div class="hero-preview-rule"></div>
-        <div class="hero-preview-bottom"><div><span>AMOUNT DUE</span><strong>250.00 <small>tUSD8</small></strong></div><span class="hero-preview-arrow">${icon('chevron-right')}</span></div>
+    <div class="hero-visual" aria-hidden="true">
+      <div class="folio-paper">
+        <div class="folio-paper-header">
+          <span class="folio-paper-brand">folio<span>.</span></span>
+          <span class="folio-paper-number">Example invoice</span>
+        </div>
+        <div class="folio-paper-body">
+          <p class="folio-paper-caption">Invoice for</p>
+          <div class="folio-paper-title">Brand identity<br>and direction</div>
+          <p class="folio-paper-subtitle">Independent creative services</p>
+        </div>
+        <div class="folio-paper-fields">
+          <div><span>Service</span><strong>Design &amp; direction</strong></div>
+          <div><span>Payment window</span><strong>7 days</strong></div>
+        </div>
+        <div class="folio-paper-total">
+          <span>Amount due</span>
+          <strong>250.00 <small>tUSD8</small></strong>
+        </div>
+        <div class="folio-paper-bottom">
+          <span class="folio-paper-badge"><i></i> Awaiting payment</span>
+          <span>Illustrative preview</span>
+        </div>
       </div>
-      <div class="hero-proof"><span class="hero-proof-icon">${icon('shield-check')}</span><span><strong>Verifiable by design</strong><small>On-chain receipts after payment</small></span><span class="hero-proof-check">${icon('check')}</span></div>
-      <span class="hero-art-note">01 / CREATE → SHARE → VERIFY</span>
+      <div class="hero-proof">
+        <span class="hero-proof-icon">${icon('shield-check')}</span>
+        <div><strong>Receipt when paid</strong><span>On-chain proof, on the same link</span></div>
+        <span class="hero-proof-check">${icon('check')}</span>
+      </div>
     </div>
   </section>`;
 }
@@ -158,7 +165,7 @@ export function workspace(state, collection) {
     ${hero()}
     <section class="invoices" aria-labelledby="invoice-title">
       <div class="section-head">
-        <div><span class="section-kicker">YOUR WORKSPACE</span><h2 id="invoice-title">Invoices</h2><p>All your payment requests in one place.</p></div>
+        <div><h2 id="invoice-title">Your invoices</h2><p>Payment requests and receipts from your connected wallet.</p></div>
         ${newButton()}
       </div>
       ${state.account ? `<div class="invoice-toolbar">

@@ -21,13 +21,6 @@ let listVersion = 0;
 let toastTimer;
 let receiptTimer;
 let issuingWallet = null;
-let paperAnimated = false;
-const paperObserver = new IntersectionObserver(([entry]) => {
-  if (!entry.isIntersecting || !entry.target.isConnected) return;
-  entry.target.classList.add('paper-arriving');
-  paperAnimated = true;
-  paperObserver.disconnect();
-}, { threshold: 0.35 });
 
 function invoiceLink(invoice) {
   const url = new URL('/', location.origin);
@@ -48,7 +41,6 @@ function enrich(invoice, memo) {
 }
 
 function render() {
-  paperObserver.disconnect();
   const previousDialog = app.querySelector('dialog')?.getAttribute('aria-labelledby');
   const focusedAction = app.contains(document.activeElement) ? document.activeElement.closest?.('[data-action]') : null;
   const previousAction = focusedAction ? {
@@ -60,9 +52,6 @@ function render() {
     state.dialog === 'ready' ? ui.readyDialog(state.ready, invoiceLink(state.ready)) : '';
   app.innerHTML = (state.view === 'checkout' ? ui.checkout(state, state.current, state.current ? invoiceLink(state.current) : location.href) :
     state.view === 'settings' ? ui.settings(state) : ui.workspace(state, state.live)) + dialog;
-
-  const paper = app.querySelector('.paper-scene');
-  if (paper && !paperAnimated) paperObserver.observe(paper);
 
   const element = app.querySelector('dialog');
   if (element) {
