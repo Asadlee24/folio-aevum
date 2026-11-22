@@ -309,6 +309,7 @@ html { scroll-behavior: smooth; scroll-padding-top: 108px; }
 .glass-stage {
   position: relative;
   isolation: isolate;
+  overflow: clip;
   min-width: 0;
   display: grid;
   grid-template-rows: auto 1fr auto;
@@ -408,7 +409,7 @@ html { scroll-behavior: smooth; scroll-padding-top: 108px; }
   gap: 9px;
   position: absolute;
   right: -37px;
-  bottom: -4px;
+  bottom: -18px;
   min-width: 183px;
   padding: 9px 11px;
   border: 1px solid #dfd7ff7a;
@@ -480,14 +481,14 @@ html { scroll-behavior: smooth; scroll-padding-top: 108px; }
   .glass-stage { min-height: 410px; border-radius: 21px; }
   .preview-header { padding: 12px 11px 0; }
   .preview-header h2 { font-size: .83rem; }
-  .preview-switch .preview-toggle { min-height: 36px; padding-inline: 8px; font-size: .76rem; }
+  .preview-switch .preview-toggle { min-height: 44px; padding-inline: 8px; font-size: .76rem; }
   .preview-scene { min-height: 326px; padding: 10px 26px 18px 11px; }
   .glass-stack { height: 268px; }
   .document-face { padding-block: 16px; }
   .document-label { margin-top: 15px; }
   .document-total strong { font-size: 1.65rem; }
   .document-note { margin-top: 10px; }
-  .preview-status { bottom: -10px; right: -25px; min-width: 156px; padding: 7px 8px; }
+  .preview-status { bottom: -19px; right: -25px; min-width: 156px; padding: 7px 8px; }
   .preview-status-icon { width: 28px; height: 28px; }
   .preview-status strong { font-size: .71rem; }
   .preview-caption { margin: 0 0 10px 11px; }

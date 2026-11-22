@@ -116,7 +116,7 @@ function hero(preview) {
                 <h3>Studio North</h3>
                 <dl class="document-lines"><div><dt>Brand identity design</dt><dd>250.00</dd></div></dl>
                 <div class="document-total"><span>Amount paid</span><strong>250.00 <small>tUSD8</small></strong></div>
-                <span class="document-note">${icon('shield-check')} Aevum Testnet receipt preview</span>
+                <span class="document-note">${icon('shield-check')} Aevum Testnet</span>
               </div>
             </div>
             <div class="preview-status" aria-hidden="true">
