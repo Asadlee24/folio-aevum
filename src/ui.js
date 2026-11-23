@@ -15,10 +15,10 @@ const button = (text, action, options = {}) => {
     (symbol ? icon(symbol) : '') + '<span>' + text + '</span></button>';
 };
 const copyStatus = '<p class="copy-status" data-copy-status role="status"></p>';
-function newButton(showHistory) {
+function newButton(recording) {
   const url = new URL('/', location.origin);
   url.searchParams.set('new', '1');
-  if (showHistory) url.searchParams.set('history', '1');
+  if (recording) url.searchParams.set('record', '1');
   const link = mobileWalletLink(url.href);
   return link
     ? `<a class="button primary" href="${link}">${icon('plus')}<span>New invoice</span></a>`
@@ -34,7 +34,7 @@ export function badge(status) {
 }
 
 export function header(state, checkout = false) {
-  const brand = '<a class="brand" href="' + (state.showHistory ? '/?history=1' : '/') + '" data-action="home" aria-label="Folio home">' + mark + '<span>folio<span class="word-dot">.</span></span></a>';
+  const brand = '<a class="brand" href="' + (state.recording ? '/?record=1' : '/') + '" data-action="home" aria-label="Folio home">' + mark + '<span>folio<span class="word-dot">.</span></span></a>';
   const network = '<span class="net">' + clock + ' Aevum Testnet</span>';
   const nav = checkout ? '' : `<nav aria-label="Workspace" class="primary-nav">
     <button data-action="home" ${state.view === 'invoices' ? 'aria-current="page"' : ''}>Invoices</button>
@@ -78,14 +78,14 @@ function paymentGuide() {
   </section>`;
 }
 
-function hero(preview, showHistory) {
+function hero(preview, recording) {
   const paid = preview === 'receipt';
   return `<section class="folio-hero" aria-labelledby="hero-title">
     <div class="hero-copy">
       <h1 id="hero-title">Send an invoice.<br><span>Share a receipt.</span></h1>
       <p class="hero-description">Send your client one payment link. Once they pay, that same link becomes a receipt they can verify on Aevum.</p>
       <div class="hero-actions">
-        ${newButton(showHistory)}
+        ${newButton(recording)}
         <a class="hero-secondary" href="#payment-guide-title">How it works ${icon('chevron-down')}</a>
       </div>
       <p class="hero-footnote">${icon('shield-check')} Testnet payments use test tokens</p>
@@ -168,16 +168,16 @@ function invoiceTable(collection, state) {
 }
 
 export function workspace(state, collection) {
-  if (!state.showHistory) {
+  if (state.recording && !state.count && !state.loading) {
     return header(state) + '<main class="workspace" id="main" tabindex="-1">' +
-      hero(state.preview) + paymentGuide() + '</main>' + footer();
+      hero(state.preview, state.recording) + paymentGuide() + '</main>' + footer();
   }
   return header(state) + `<main class="workspace" id="main" tabindex="-1">
-    ${hero(state.preview, state.showHistory)}
+    ${hero(state.preview, state.recording)}
     <section class="invoices" aria-labelledby="invoice-title">
       <div class="section-head">
         <div><h2 id="invoice-title">Your workspace</h2><p>Manage your invoices and receipts.</p></div>
-        ${newButton(state.showHistory)}
+        ${newButton(state.recording)}
       </div>
       ${state.account ? `<div class="invoice-toolbar">
         <span class="account-label">${icon('wallet')} <span>${esc(shortAddress(state.account))}</span></span>
@@ -189,7 +189,8 @@ export function workspace(state, collection) {
     (state.count > 10 ? '<div class="pagination">' +
       button('Previous', 'previous', { disabled: state.offset === 0 }) + '<span>' + (state.offset + 1) + '–' + Math.min(state.offset + 10, state.count) + ' of ' + state.count + '</span>' +
       button('Next', 'next', { disabled: state.offset + 10 >= state.count }) + '</div>' : '') +
-    '</div></section><div id="featured-invoice">' + featuredInvoice(state.featured) + '</div>' + paymentGuide() + '</main>' + footer();
+    '</div></section>' + (state.recording ? '' : '<div id="featured-invoice">' + featuredInvoice(state.featured) + '</div>') +
+    paymentGuide() + '</main>' + footer();
 }
 
 export const refreshTable = (state, collection) => {
@@ -208,8 +209,8 @@ export function settings(state) {
     <div class="settings-grid">
       <section class="setting"><div class="setting-icon">${icon('receipt')}</div><h2>How payments work</h2>
         <p>Issue an invoice with a fixed amount and due date. Your client pays your wallet directly, and the invoice link becomes a verifiable receipt.</p>
-        <div class="mode-options">${newButton(state.showHistory)}
-          <a class="button secondary" href="${state.showHistory ? '/' : '/?history=1'}">${state.showHistory ? 'Hide invoice history' : 'Show invoice history'}</a>
+        <div class="mode-options">${newButton(state.recording)}
+          <a class="button secondary" href="${state.recording ? '/' : '/?record=1&amp;fresh=1'}">${state.recording ? 'Show full invoice history' : 'Start clean recording'}</a>
         </div>
       </section>
       <section class="setting"><div class="setting-icon">${icon('wallet')}</div><h2>Wallet and test tokens</h2>

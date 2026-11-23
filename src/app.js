@@ -8,9 +8,16 @@ import * as ui from './ui.js';
 const app = document.querySelector('#app');
 const savedContract = model.readLocal('folio.contract', null);
 const workspaceContract = chain.addressOK(savedContract) ? savedContract : CONTRACT;
+const recordingKey = 'folio.recordingInvoices:' + workspaceContract.toLowerCase();
+let recordedIds = [];
+try {
+  const saved = JSON.parse(sessionStorage.getItem(recordingKey));
+  if (Array.isArray(saved)) recordedIds = saved.filter((id) => typeof id === 'string' && /^[1-9]\d{0,77}$/.test(id));
+} catch { /* Keep the current recording in memory if session storage is unavailable. */ }
+
 const state = {
   view: 'invoices',
-  showHistory: false,
+  recording: false,
   preview: 'invoice',
   account: '',
   query: '', filter: 'all', offset: 0, count: 0, live: [],
@@ -24,6 +31,12 @@ let toastTimer;
 let receiptTimer;
 let issuingWallet = null;
 let firstHeroRendered = false;
+
+function saveRecordedIds(ids) {
+  recordedIds = ids;
+  try { sessionStorage.setItem(recordingKey, JSON.stringify(ids)); }
+  catch { /* The current recording still works in memory. */ }
+}
 
 function invoiceLink(invoice) {
   const url = new URL('/', location.origin);
@@ -216,11 +229,15 @@ function settings() {
 
 async function loadList() {
   const version = ++listVersion;
-  if (!state.showHistory || !state.account || state.view !== 'invoices') return;
+  if (state.view !== 'invoices' || (state.recording ? !recordedIds.length : !state.account)) return;
   state.loading = true;
   render();
   try {
-    const { invoices, count } = await chain.listInvoices(workspaceContract, state.account, state.offset);
+    const { invoices, count } = state.recording ? {
+      invoices: await Promise.all(recordedIds.slice(state.offset, state.offset + 10)
+        .map((id) => chain.getInvoice(workspaceContract, id))),
+      count: recordedIds.length,
+    } : await chain.listInvoices(workspaceContract, state.account, state.offset);
     if (version !== listVersion) return;
     state.live = invoices.map((invoice) => enrich(invoice, model.getMemo(invoice)));
     state.count = count;
@@ -274,7 +291,18 @@ async function loadRoute() {
   const params = new URL(location.href).searchParams;
   const liveId = params.get('invoice');
   const contract = params.get('contract');
-  state.showHistory = params.get('history') === '1' && params.get('record') !== '1';
+  const recording = params.get('record') === '1';
+  const freshRecording = recording && !liveId && params.get('fresh') === '1';
+  if (freshRecording) saveRecordedIds([]);
+  if (state.recording !== recording || freshRecording) {
+    state.live = [];
+    state.count = 0;
+    state.offset = 0;
+    state.query = '';
+    state.filter = 'all';
+    state.featured = null;
+  }
+  state.recording = recording;
   state.dialog = '';
   state.ready = null;
   state.current = null;
@@ -283,14 +311,16 @@ async function loadRoute() {
   clearInterval(receiptTimer);
   if (!liveId) {
     state.view = 'invoices';
-    if (params.get('new') === '1') {
-      state.dialog = 'new';
+    const openComposer = params.get('new') === '1';
+    if (openComposer) state.dialog = 'new';
+    if (openComposer || freshRecording) {
       params.delete('new');
+      if (freshRecording) params.delete('fresh');
       const url = new URL(location.href);
       url.search = params.toString();
       history.replaceState(history.state, '', url.href);
     }
-    if (state.showHistory) void loadFeatured(version);
+    if (!state.recording) void loadFeatured(version);
     render();
     await loadList();
     return;
@@ -332,7 +362,7 @@ async function loadRoute() {
 
 function go(url) {
   const destination = new URL(url);
-  if (state.showHistory) destination.searchParams.set('history', '1');
+  if (state.recording) destination.searchParams.set('record', '1');
   if (destination.href !== location.href) history.pushState({}, '', destination.href);
   window.scrollTo(0, 0);
   void loadRoute();
@@ -369,8 +399,12 @@ async function createInvoice(form) {
     const invoice = await chain.issueInvoice(workspaceContract, issuingWallet.signer, details, notifyProgress);
     model.saveMemo(invoice, details.merchant, details.title);
     state.ready = enrich(invoice, [details.merchant, details.title]);
+    if (state.recording) {
+      saveRecordedIds([invoice.id, ...recordedIds.filter((id) => id !== invoice.id)]);
+      state.offset = 0;
+    }
     state.live = [state.ready, ...state.live.filter((item) => item.id !== state.ready.id)].slice(0, 10);
-    state.count++;
+    state.count = state.recording ? recordedIds.length : state.count + 1;
     model.writeLocal('folio.merchant', details.merchant);
     state.draft = { merchant: details.merchant, title: '', amount: '', due: 7 };
     state.filter = 'all';
