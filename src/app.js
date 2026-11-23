@@ -10,7 +10,7 @@ const savedContract = model.readLocal('folio.contract', null);
 const workspaceContract = chain.addressOK(savedContract) ? savedContract : CONTRACT;
 const state = {
   view: 'invoices',
-  recording: false,
+  showHistory: false,
   preview: 'invoice',
   account: '',
   query: '', filter: 'all', offset: 0, count: 0, live: [],
@@ -216,7 +216,7 @@ function settings() {
 
 async function loadList() {
   const version = ++listVersion;
-  if (state.recording || !state.account || state.view !== 'invoices') return;
+  if (!state.showHistory || !state.account || state.view !== 'invoices') return;
   state.loading = true;
   render();
   try {
@@ -274,7 +274,7 @@ async function loadRoute() {
   const params = new URL(location.href).searchParams;
   const liveId = params.get('invoice');
   const contract = params.get('contract');
-  state.recording = params.get('record') === '1';
+  state.showHistory = params.get('history') === '1' && params.get('record') !== '1';
   state.dialog = '';
   state.ready = null;
   state.current = null;
@@ -290,7 +290,7 @@ async function loadRoute() {
       url.search = params.toString();
       history.replaceState(history.state, '', url.href);
     }
-    if (!state.recording) void loadFeatured(version);
+    if (state.showHistory) void loadFeatured(version);
     render();
     await loadList();
     return;
@@ -332,7 +332,7 @@ async function loadRoute() {
 
 function go(url) {
   const destination = new URL(url);
-  if (state.recording) destination.searchParams.set('record', '1');
+  if (state.showHistory) destination.searchParams.set('history', '1');
   if (destination.href !== location.href) history.pushState({}, '', destination.href);
   window.scrollTo(0, 0);
   void loadRoute();
