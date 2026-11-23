@@ -532,11 +532,11 @@ html { scroll-behavior: smooth; scroll-padding-top: 108px; }
 [data-preview="receipt"] .preview-status-icon svg:first-child { display: none; }
 .preview-caption { z-index: 1; justify-self: start; color: #ded9ef; background: #0d0d1cd9; border: 1px solid #ffffff23; border-radius: 7px; padding: 5px 8px; margin: 0 0 13px 17px; font-size: .72rem; }
 @media (prefers-reduced-motion: no-preference) {
-  .hero-first-entry .hero-copy > * { animation: sheet-enter .58s cubic-bezier(.2,.8,.25,1) both; }
-  .hero-first-entry .hero-description { animation-delay: .06s; }
-  .hero-first-entry .hero-actions { animation-delay: .12s; }
-  .hero-first-entry .hero-footnote { animation-delay: .16s; }
-  .hero-first-entry .glass-arrival { animation: glass-arrival .75s cubic-bezier(.2, .8, .25, 1) both; }
+  .hero-first-entry .hero-copy > * { animation: sheet-enter .58s cubic-bezier(.2,.8,.25,1) var(--hero-offset) both; }
+  .hero-first-entry .hero-description { animation-delay: calc(var(--hero-offset) + .06s); }
+  .hero-first-entry .hero-actions { animation-delay: calc(var(--hero-offset) + .12s); }
+  .hero-first-entry .hero-footnote { animation-delay: calc(var(--hero-offset) + .16s); }
+  .hero-first-entry .glass-arrival { animation: glass-arrival .75s cubic-bezier(.2, .8, .25, 1) var(--hero-offset) both; }
   @keyframes glass-arrival {
     from { transform: translateY(16px) scale(.97); opacity: 0; }
     to { transform: translateY(0) scale(1); opacity: 1; }
@@ -557,6 +557,16 @@ html { scroll-behavior: smooth; scroll-padding-top: 108px; }
 .guide-bottom svg { width: 16px; height: 16px; }
 .footer { border-top: 1px solid var(--line); margin-top: 26px; }
 
+@media (min-width: 851px) and (max-height: 780px) {
+  .workspace { padding-top: clamp(28px, 6.4vh, 50px); }
+  .folio-hero { margin-bottom: clamp(50px, 9vh, 70px); }
+  .glass-stage { min-height: clamp(382px, 66vh, 490px); }
+  .preview-scene { min-height: clamp(300px, 50vh, 365px); }
+  .glass-stack { height: clamp(254px, 43vh, 299px); }
+  .document-face { padding-block: clamp(15px, 2.55vh, 19px); }
+  .document-label { margin-top: clamp(13px, 2.7vh, 20px); }
+  .document-note { margin-top: 10px; }
+}
 @media (max-width: 850px) {
   .folio-hero { grid-template-columns: minmax(0, 1fr); gap: 34px; }
   .folio-hero h1 { font-size: clamp(2.65rem, 8.8vw, 4.45rem); }

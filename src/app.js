@@ -36,7 +36,7 @@ const confirmationMotionMs = 1000;
 const paymentStatus = document.querySelector('#payment-status');
 let latestWallet;
 let walletModalVisible = false;
-let firstHeroRendered = false;
+let heroStarted;
 
 function saveRecordedIds(ids) {
   recordedIds = ids;
@@ -75,9 +75,14 @@ function render() {
   app.innerHTML = (state.view === 'checkout' ? ui.checkout(state, state.current, state.current ? invoiceLink(state.current) : location.href) :
     state.view === 'settings' ? ui.settings(state) : ui.workspace(state, state.live)) + dialog;
   const scene = app.querySelector('.preview-scene');
-  if (scene && !firstHeroRendered) {
-    scene.closest('.folio-hero').classList.add('hero-first-entry');
-    firstHeroRendered = true;
+  if (scene) {
+    heroStarted ??= performance.now();
+    const elapsed = performance.now() - heroStarted;
+    if (elapsed < 750) {
+      const hero = scene.closest('.folio-hero');
+      hero.style.setProperty('--hero-offset', `-${elapsed}ms`);
+      hero.classList.add('hero-first-entry');
+    }
   }
   enablePreviewTilt(scene);
 
