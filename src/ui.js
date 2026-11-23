@@ -206,7 +206,7 @@ export function settings(state) {
       <section class="setting"><div class="setting-icon">${icon('receipt')}</div><h2>How payments work</h2>
         <p>Issue an invoice with a fixed amount and due date. Your client pays your wallet directly, and the invoice link becomes a verifiable receipt.</p>
         <div class="mode-options">${newButton()}
-          <a class="button secondary" href="${state.recording ? '/' : '/?record=1&amp;fresh=1'}">${state.recording ? 'Show full invoice history' : 'Start clean recording'}</a>
+          ${state.recording ? '<a class="button secondary" href="/">Show full invoice history</a>' : ''}
         </div>
       </section>
       <section class="setting"><div class="setting-icon">${icon('wallet')}</div><h2>Wallet and test tokens</h2>
