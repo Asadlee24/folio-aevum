@@ -15,6 +15,7 @@ const button = (text, action, options = {}) => {
     (action ? ' data-action="' + action + '"' : '') + (disabled ? ' disabled' : '') + ' ' + attrs + '>' +
     (symbol ? icon(symbol) : '') + '<span>' + text + '</span></button>';
 };
+const copyStatus = '<p class="copy-status" data-copy-status role="status"></p>';
 function newButton() {
   const url = new URL('/', location.origin);
   url.searchParams.set('new', '1');
@@ -232,12 +233,13 @@ export function createDialog(state) {
 }
 
 export function readyDialog(invoice, link) {
-  return `<dialog class="composer" aria-labelledby="ready-title">
+  return `<dialog class="composer" aria-labelledby="ready-title" data-link-share>
     <div class="composer-top"><div class="setting-icon success">${icon('check')}</div><button class="icon-button close" data-action="close" aria-label="Close">${icon('x')}</button></div>
     <div class="dialog-title"><h2 id="ready-title">Invoice ready</h2><p>Share this link so your client can review the invoice and pay.</p></div>
     <div class="summary"><strong>${esc(invoice.title || 'Invoice #' + invoice.id)}</strong><span>${price(invoice.amount)} tUSD8</span></div>
-    <label class="link-label" for="share-url">Client link</label><div class="share-row"><input id="share-url" readonly value="${esc(link)}">
-    ${button('Copy', 'copy-ready', { symbol: 'copy', className: 'primary' })}</div>
+    <label class="link-label" for="share-url">Client link</label><div class="share-row"><input id="share-url" data-share-url readonly value="${esc(link)}">
+    ${button('Copy', 'copy-link', { symbol: 'copy', className: 'primary' })}</div>
+    ${copyStatus}
     <div class="dialog-actions">${button('Open checkout', 'open-ready', { symbol: 'external-link' })}</div>
   </dialog>`;
 }
@@ -299,7 +301,7 @@ export function checkout(state, invoice, link) {
           ${paid ? '<div><dt>Payer</dt><dd>' + external(esc(shortAddress(invoice.payer)), addressURL(invoice.payer)) + '</dd></div>' : ''}
         </dl>
       </div>
-      <div class="checkout-settlement">
+      <div class="checkout-settlement" data-link-share>
         <div class="checkout-amount"><span>${amountLabel}</span><div>${price(invoice.amount)} <small>tUSD8</small></div></div>
         ${!verified ? '<div class="checkout-note warning">' + icon('triangle-alert') + ' The invoice description is unverified. Check the recipient and amount.</div>' : ''}
         ${status === 'open' ? '<div class="checkout-note">' + icon('shield-check') + ' Test tokens settle directly to the recipient’s wallet.</div>' : ''}
@@ -308,9 +310,11 @@ export function checkout(state, invoice, link) {
         <div class="checkout-actions">
           ${status === 'open' ? walletAction(paymentAction, 'pay', 'primary', state.busy) : ''}
           ${paid && invoice.hash ? external('Verify transaction', txURL(invoice.hash)) : ''}
-          ${button(paid ? 'Copy receipt link' : 'Copy invoice link', 'copy-current', { symbol: 'copy', attrs: 'data-url="' + esc(link) + '"' })}
+          ${button(paid ? 'Copy receipt link' : 'Copy invoice link', 'copy-link', { symbol: 'copy' })}
           ${cancellable ? button('Cancel invoice', 'cancel-invoice', { className: 'quiet', disabled: state.busy }) : ''}
         </div>
+        <input class="checkout-share-url" aria-label="${paid ? 'Receipt link' : 'Invoice link'}" data-share-url readonly hidden value="${esc(link)}">
+        ${copyStatus}
       </div>
       </section>${invoiceProof(invoice, status)}`) + '</main>' + footer();
 }

@@ -175,15 +175,33 @@ function closeDialog() {
   app.querySelector('[data-action="new"]')?.focus();
 }
 
-async function copy(text) {
+async function copyLink(control) {
+  const share = control.closest('[data-link-share]');
+  const field = share.querySelector('[data-share-url]');
+  const status = share.querySelector('[data-copy-status]');
+  status.textContent = '';
+
   try {
-    await navigator.clipboard.writeText(text);
-    notice('Link copied');
-  } catch {
-    const field = app.querySelector('#share-url');
-    if (field) { field.focus(); field.select(); }
-    notice('Clipboard unavailable. Copy the link manually.');
-  }
+    await navigator.clipboard.writeText(field.value);
+    status.textContent = 'Link copied.';
+    return;
+  } catch { /* Try copying the selected link in browsers that block the Clipboard API. */ }
+
+  if (!field.isConnected) return;
+  const wasHidden = field.hidden;
+  field.hidden = false;
+  field.focus({ preventScroll: !wasHidden });
+  field.select();
+  field.setSelectionRange(0, field.value.length);
+  try {
+    if (document.execCommand('copy')) {
+      field.hidden = wasHidden;
+      control.focus({ preventScroll: true });
+      status.textContent = 'Link copied.';
+      return;
+    }
+  } catch { /* Keep the link selected for manual copying. */ }
+  status.textContent = 'Automatic copy is unavailable. Press and hold the link or use your keyboard to copy it.';
 }
 
 function settings() {
@@ -387,7 +405,7 @@ app.addEventListener('submit', (event) => {
 app.addEventListener('click', (event) => {
   const control = event.target.closest('[data-action]');
   if (!control) return;
-  const { action, id, filter, url } = control.dataset;
+  const { action, id, filter } = control.dataset;
   event.preventDefault();
   if (state.busy) return;
 
@@ -409,9 +427,8 @@ app.addEventListener('click', (event) => {
       void loadList();
       break;
     case 'open': openInvoice(state.live.find((invoice) => invoice.id === id)); break;
-    case 'copy-ready': void copy(invoiceLink(state.ready)); break;
+    case 'copy-link': void copyLink(control); break;
     case 'open-ready': openInvoice(state.ready); break;
-    case 'copy-current': void copy(url); break;
     case 'reload-checkout': void loadRoute(); break;
     case 'pay': void pay(); break;
     case 'cancel-invoice':
