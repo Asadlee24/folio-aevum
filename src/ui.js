@@ -297,8 +297,12 @@ export function checkout(state, invoice, link) {
       '<div class="empty">' + icon('loader-circle') + '<p>Checking invoice on Aevum…</p></div>' :
       '<h1>Invoice unavailable</h1>' + progress(state) + button('Try again', 'reload-checkout')) + '</section>' :
       `<section class="checkout-card ${paid ? 'receipt-paid' : ''}">
+      ${paid ? `<div class="payment-confirmation">
+        <span class="confirmation-mark" aria-hidden="true">${icon('check')}</span>
+        <div class="confirmation-copy"><strong>Payment confirmed</strong><span>Settled on Aevum Testnet</span></div>
+      </div>` : ''}
       <div class="checkout-document">
-        <div class="checkout-top"><div class="setting-icon ${paid ? 'success' : ''}">${icon(paid ? 'check' : 'receipt')}</div>${badge(status)}</div>
+        <div class="checkout-top"><div class="setting-icon">${icon('receipt')}</div>${badge(status)}</div>
         <div class="checkout-title"><span class="eyebrow">${receiptTitle} / #${esc(invoice.id)}</span>
           <h1>${esc(invoice.title || 'Invoice #' + invoice.id)}</h1>
           <p>From ${esc(invoice.merchant || shortAddress(invoice.issuer))}${verified ? ' <span class="verified-name" aria-label="Invoice details verified" title="Invoice details match the on-chain hash">' + icon('shield-check') + '</span>' : ''}</p>
@@ -313,7 +317,6 @@ export function checkout(state, invoice, link) {
         <div class="checkout-amount"><span>${amountLabel}</span><div>${price(invoice.amount)} <small>tUSD8</small></div></div>
         ${!verified ? '<div class="checkout-note warning">' + icon('triangle-alert') + ' The invoice description is unverified. Check the recipient and amount.</div>' : ''}
         ${status === 'open' ? '<div class="checkout-note">' + icon('shield-check') + ' Test tokens settle directly to the recipient’s wallet.</div>' : ''}
-        ${paid ? '<div class="checkout-note">' + icon('shield-check') + ' Confirmed on Aevum Testnet.</div>' : ''}
         ${progress(state)}
         <div class="checkout-actions">
           ${status === 'open' ? walletAction(paymentAction, 'pay', 'primary', state.busy) : ''}

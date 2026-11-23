@@ -180,6 +180,90 @@ body:has(dialog[open]) { overflow: hidden; }
 .checkout-card:has(.checkout-document) { display: grid; grid-template-columns: minmax(0, 1.13fr) minmax(0, 1fr); gap: 26px; padding: 26px; }
 .checkout-settlement { align-self: start; border-radius: 12px; background: var(--paper); padding: 15px; }
 .receipt-paid .checkout-settlement { background: var(--mint); }
+.payment-confirmation {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: clamp(13px, 2.5vw, 20px);
+  padding: clamp(14px, 2.8vw, 24px);
+  border: 1px solid #53bca56b;
+  border-radius: 15px;
+  background: radial-gradient(ellipse at top left, #2e6859, transparent 72%), linear-gradient(118deg, #193b36, #1a2836);
+  box-shadow: inset 0 1px #cefff123;
+}
+.payment-confirmation::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  opacity: 0;
+  background: linear-gradient(110deg, transparent 25%, #ceffed2b 48%, #b8a9ff21 54%, transparent 76%);
+}
+.confirmation-mark {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: clamp(43px, 8vw, 58px);
+  aspect-ratio: 1;
+  border: 1px solid #baffdd;
+  border-radius: 50%;
+  color: #12382d;
+  background: linear-gradient(150deg, #dcfff0, #78e3b9);
+  box-shadow: 0 5px 20px #092e2860, inset 0 1px #fff;
+}
+.confirmation-mark::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border: 1px solid #bbffe0;
+  border-radius: inherit;
+  opacity: 0;
+}
+.confirmation-mark svg { width: 55%; height: 55%; stroke-width: 2.6; }
+.confirmation-copy { display: grid; gap: 2px; }
+.confirmation-copy strong { font: 800 clamp(1.12rem, 3.5vw, 1.55rem)/1.18 var(--display); letter-spacing: -.037em; }
+.confirmation-copy span { color: #c1e7db; font-size: .86rem; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .payment-confirmation.is-animating::before {
+    animation: confirmation-shine .95s ease-out var(--confirmation-offset) both;
+  }
+  .is-animating .confirmation-mark {
+    animation: confirmation-pop .58s cubic-bezier(.21,.77,.34,1) var(--confirmation-offset) both;
+  }
+  .is-animating .confirmation-mark::after {
+    animation: confirmation-ring .85s ease-out var(--confirmation-offset) both;
+  }
+  .is-animating .confirmation-mark svg {
+    animation: confirmation-check .52s ease-out var(--confirmation-offset) both;
+  }
+  .is-animating .confirmation-copy {
+    animation: sheet-enter .55s cubic-bezier(.2,.75,.25,1) var(--confirmation-offset) both;
+  }
+  @keyframes confirmation-shine {
+    from { opacity: 0; transform: translateX(-100%); }
+    24%, 62% { opacity: 1; }
+    to { opacity: 0; transform: translateX(100%); }
+  }
+  @keyframes confirmation-pop {
+    from { opacity: .5; transform: scale(.72); }
+    62% { opacity: 1; transform: scale(1.09); }
+    to { transform: scale(1); }
+  }
+  @keyframes confirmation-ring {
+    0%, 24% { opacity: 0; transform: scale(.88); }
+    43% { opacity: .8; }
+    to { opacity: 0; transform: scale(1.62); }
+  }
+  @keyframes confirmation-check {
+    from, 20% { stroke-dasharray: 24; stroke-dashoffset: 24; }
+    to { stroke-dasharray: 24; stroke-dashoffset: 0; }
+  }
+}
 .checkout-top { display: flex; justify-content: space-between; align-items: center; }
 .checkout-title { margin: 15px 0 12px; }
 .checkout-title .eyebrow { color: var(--accent); }
@@ -435,9 +519,10 @@ html { scroll-behavior: smooth; scroll-padding-top: 108px; }
   border-radius: 9px;
   background: #dbab6530;
   color: #ffd3a0;
+  transition: background-color .28s ease, color .28s ease, transform .4s cubic-bezier(.22,.8,.25,1);
 }
 .preview-status-icon svg { width: 17px; height: 17px; }
-[data-preview="receipt"] .preview-status-icon { background: #83ffca26; color: #b2ffdc; }
+[data-preview="receipt"] .preview-status-icon { background: #83ffca26; color: #b2ffdc; transform: scale(1.07); }
 .preview-status small, .preview-status strong { display: block; }
 .preview-status small { font-size: .68rem; color: #cfcae4; }
 .preview-status strong { font-size: .79rem; margin-top: 2px; }
@@ -447,6 +532,10 @@ html { scroll-behavior: smooth; scroll-padding-top: 108px; }
 [data-preview="receipt"] .preview-status-icon svg:first-child { display: none; }
 .preview-caption { z-index: 1; justify-self: start; color: #ded9ef; background: #0d0d1cd9; border: 1px solid #ffffff23; border-radius: 7px; padding: 5px 8px; margin: 0 0 13px 17px; font-size: .72rem; }
 @media (prefers-reduced-motion: no-preference) {
+  .hero-first-entry .hero-copy > * { animation: sheet-enter .58s cubic-bezier(.2,.8,.25,1) both; }
+  .hero-first-entry .hero-description { animation-delay: .06s; }
+  .hero-first-entry .hero-actions { animation-delay: .12s; }
+  .hero-first-entry .hero-footnote { animation-delay: .16s; }
   .hero-first-entry .glass-arrival { animation: glass-arrival .75s cubic-bezier(.2, .8, .25, 1) both; }
   @keyframes glass-arrival {
     from { transform: translateY(16px) scale(.97); opacity: 0; }

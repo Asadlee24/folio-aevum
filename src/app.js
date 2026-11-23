@@ -31,6 +31,9 @@ let routeVersion = 0;
 let listVersion = 0;
 let toastTimer;
 let receiptTimer;
+let confirmationStarted;
+const confirmationMotionMs = 1000;
+const paymentStatus = document.querySelector('#payment-status');
 let latestWallet;
 let walletModalVisible = false;
 let firstHeroRendered = false;
@@ -73,10 +76,20 @@ function render() {
     state.view === 'settings' ? ui.settings(state) : ui.workspace(state, state.live)) + dialog;
   const scene = app.querySelector('.preview-scene');
   if (scene && !firstHeroRendered) {
-    scene.classList.add('hero-first-entry');
+    scene.closest('.folio-hero').classList.add('hero-first-entry');
     firstHeroRendered = true;
   }
   enablePreviewTilt(scene);
+
+  if (confirmationStarted !== undefined) {
+    const elapsed = performance.now() - confirmationStarted;
+    const confirmation = app.querySelector('.payment-confirmation');
+    // Continue the same animation if wallet or transaction details cause a render.
+    if (confirmation && elapsed < confirmationMotionMs) {
+      confirmation.style.setProperty('--confirmation-offset', `-${elapsed}ms`);
+      confirmation.classList.add('is-animating');
+    }
+  }
 
   const element = app.querySelector('dialog');
   if (element && !walletModalVisible) {
@@ -277,11 +290,19 @@ function syncWallet() {
 function loadHash(invoice, version) {
   if (invoice.state !== 'paid' || !invoice.contract) return;
   chain.receiptHash(invoice).then((hash) => {
-    if (hash && version === routeVersion && state.current?.id === invoice.id) {
+    if (hash && version === routeVersion && state.current?.id === invoice.id && !state.current.hash) {
       state.current = { ...state.current, hash };
       render();
     }
   }).catch(() => {});
+}
+
+function updateCheckout(invoice) {
+  if (invoice.state === 'paid' && state.current?.state === 'open') {
+    confirmationStarted = performance.now();
+    paymentStatus.textContent = 'Payment confirmed. Your receipt is ready.';
+  }
+  state.current = invoice;
 }
 
 async function loadFeatured(version) {
@@ -318,6 +339,8 @@ async function loadRoute() {
   state.dialog = '';
   state.ready = null;
   state.current = null;
+  confirmationStarted = undefined;
+  paymentStatus.textContent = '';
   state.loading = false;
   clearMessage();
   clearInterval(receiptTimer);
@@ -354,7 +377,7 @@ async function loadRoute() {
           const fresh = await chain.getInvoice(contract, liveId);
           if (version !== routeVersion || state.busy) return;
           if (state.current?.state !== fresh.state || fresh.dueAt <= model.now()) {
-            state.current = enrich(fresh, memo ?? model.getMemo(fresh));
+            updateCheckout(enrich(fresh, memo ?? model.getMemo(fresh)));
             if (fresh.state !== 'open' || fresh.dueAt <= model.now()) clearInterval(receiptTimer);
             loadHash(fresh, version);
             render();
@@ -429,12 +452,15 @@ async function createInvoice(form) {
 
 async function pay() {
   const invoice = state.current;
+  const version = routeVersion;
   if (!invoice || model.invoiceStatus(invoice) !== 'open') return;
   if (!state.account || state.walletChain !== CHAIN_ID) { connect(); return; }
   await run(async () => {
     const payer = await wallet();
     const settled = await chain.payInvoice(invoice, payer.signer, notifyProgress);
-    state.current = enrich(settled, [invoice.merchant, invoice.title]);
+    if (version !== routeVersion) return;
+    clearInterval(receiptTimer);
+    updateCheckout(enrich(settled, [invoice.merchant, invoice.title]));
   });
 }
 
