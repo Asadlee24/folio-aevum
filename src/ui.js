@@ -1,7 +1,7 @@
 import { icon } from './icons.js';
 import { addressURL, shortAddress, txURL } from './chain.js';
 import { CHAIN_ID, EXPLORER, FAUCET } from './config.js';
-import { dateText, invoiceStatus, price } from './model.js';
+import { dateText, invoiceStatus, invoiceTotals, ITEM_LABEL_LIMIT, MAX_LINE_ITEMS, price, sumItems } from './model.js';
 
 export const esc = (value = '') => String(value).replace(/[&<>"']/g, (character) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -20,6 +20,19 @@ function newButton() {
 }
 const clock = '<span class="network-dot" aria-hidden="true"></span>';
 const external = (label, url) => '<a class="external" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' + label + ' ' + icon('external-link') + '</a>';
+
+function whatsappLink(invoice, link) {
+  const url = new URL('https://wa.me/');
+  url.searchParams.set('text', [
+    invoice.title ? `Invoice #${invoice.id} · ${invoice.title}` : `Invoice #${invoice.id}`,
+    `Amount due: ${price(invoice.amount)} tUSD8`,
+    `Due: ${dateText(invoice.dueAt)} (UTC)`,
+    '',
+    'Review and pay on Folio:',
+    link,
+  ].join('\n'));
+  return `<a class="button secondary" href="${esc(url.href)}" target="_blank" rel="noopener noreferrer">${icon('message-circle')}<span>Share on WhatsApp</span></a>`;
+}
 const tabs = [['all', 'All invoices'], ['open', 'Unpaid'], ['paid', 'Paid'], ['closed', 'Closed']];
 const statusLabels = { open: 'Unpaid', paid: 'Paid', cancelled: 'Cancelled', expired: 'Expired' };
 
@@ -163,6 +176,20 @@ function invoiceTable(collection, state) {
     '<tbody>' + filtered.map(tableRow).join('') + '</tbody></table>';
 }
 
+function totalsContent(state) {
+  if (state.summaryFailed) return '<p class="totals-status">Totals unavailable. Refresh your invoices to try again.</p>';
+  if (!state.summary) return '<p class="totals-status">Loading invoice totals…</p>';
+  const labels = { paid: ['Paid', 'circle-check'], open: ['Awaiting payment', 'clock'], expired: ['Overdue', 'triangle-alert'] };
+  return '<dl class="invoice-totals">' + invoiceTotals(state.summary).map(([status, amount]) =>
+    `<div class="total-card ${status}"><dt>${icon(labels[status][1])}${labels[status][0]}</dt>
+      <dd>${price(amount)} <small>tUSD8</small></dd></div>`).join('') + '</dl>';
+}
+
+export function refreshTotals(state) {
+  const target = document.getElementById('invoice-totals');
+  if (target) target.innerHTML = totalsContent(state);
+}
+
 export function workspace(state, collection) {
   if (state.recording && !state.count && !state.loading) {
     return header(state) + '<main class="workspace" id="main" tabindex="-1">' +
@@ -175,6 +202,7 @@ export function workspace(state, collection) {
         <div><h2 id="invoice-title">Your workspace</h2><p>Manage your invoices and receipts.</p></div>
         ${newButton()}
       </div>
+      ${(state.account || state.recording) ? `<div id="invoice-totals" aria-label="Invoice totals">${totalsContent(state)}</div>` : ''}
       ${state.account ? `<div class="invoice-toolbar">
         <span class="account-label">${icon('wallet')} <span>${esc(shortAddress(state.account))}</span></span>
         ${button('Refresh', 'refresh', { symbol: 'refresh-cw', className: 'secondary refresh-button', disabled: state.loading })}
@@ -220,14 +248,25 @@ export function settings(state) {
 
 export function createDialog(state) {
   const ready = state.account && state.walletChain === CHAIN_ID;
+  const items = state.draft.items;
+  const amount = items.length ? sumItems(items.map(([label, value]) => [label, value.trim()])) : state.draft.amount;
   return `<dialog class="composer" aria-labelledby="create-title">
     <div class="composer-top"><div class="setting-icon">${icon('file-text')}</div><button class="icon-button close" data-action="close" aria-label="Close" ${state.busy ? 'disabled' : ''}>${icon('x')}</button></div>
     <div class="dialog-title"><h2 id="create-title">New invoice</h2><p>Publish an invoice to Aevum and share its payment link.</p></div>
     <form id="invoice-form" class="invoice-form">
       <label for="merchant">Your studio or business name</label><input id="merchant" name="merchant" placeholder="e.g. North Studio" value="${esc(state.draft.merchant)}" required maxlength="60" autocomplete="organization">
       <label for="title">What is this invoice for?</label><input id="title" name="title" placeholder="e.g. Brand identity design" value="${esc(state.draft.title)}" required maxlength="100">
-      <div class="form-pair"><div><label for="amount">Amount</label><div class="amount-input">
-        <input id="amount" name="amount" placeholder="0.00" inputmode="decimal" value="${esc(state.draft.amount)}" required maxlength="18"><span>tUSD8</span></div></div>
+      <div class="composer-items">
+        ${items.length ? `<div class="item-column-labels" aria-hidden="true"><span>Item</span><span>tUSD8</span></div>` : ''}
+        ${items.map(([label, value], index) => `<div class="item-input-row" data-item-row="${index}">
+          <input id="item-label-${index}" name="item-label" aria-label="Item ${index + 1} description" placeholder="e.g. Logo design" value="${esc(label)}" maxlength="${ITEM_LABEL_LIMIT}" required>
+          <input name="item-amount" aria-label="Item ${index + 1} amount in tUSD8" placeholder="0.00" inputmode="decimal" value="${esc(value)}" maxlength="16" required>
+          <button class="icon-button" type="button" data-action="remove-item" data-id="${index}" aria-label="Remove item ${index + 1}" ${state.busy ? 'disabled' : ''}>${icon('x')}</button>
+        </div>`).join('')}
+        ${items.length < MAX_LINE_ITEMS ? button('Add line item', 'add-item', { symbol: 'plus', className: 'secondary add-item', disabled: state.busy }) : ''}
+      </div>
+      <div class="form-pair"><div><label for="amount">${items.length ? 'Total amount' : 'Amount'}</label><div class="amount-input">
+        <input id="amount" name="amount" placeholder="0.00" inputmode="decimal" value="${esc(amount)}" ${items.length ? 'readonly' : 'required'} maxlength="18"><span>tUSD8</span></div></div>
         <div><label for="due">Payment window</label><div class="select-wrap">
           <select id="due" name="due">${[[1, '24 hours'], [7, '7 days'], [14, '14 days'], [30, '30 days']].map(([v, s]) => '<option value="' + v + '"' + (v === state.draft.due ? ' selected' : '') + '>' + s + '</option>').join('')}</select>${icon('chevron-down')}</div></div></div>
       <div class="form-note">${icon('shield-check')} Amount and recipient are fixed once an invoice is issued.</div>
@@ -246,7 +285,7 @@ export function readyDialog(invoice, link) {
     <label class="link-label" for="share-url">Client link</label><div class="share-row"><input id="share-url" data-share-url readonly value="${esc(link)}">
     ${button('Copy', 'copy-link', { symbol: 'copy', className: 'primary' })}</div>
     ${copyStatus}
-    <div class="dialog-actions">${button('Open checkout', 'open-ready', { symbol: 'external-link' })}</div>
+    <div class="dialog-actions ready-actions">${whatsappLink(invoice, link)}${button('Open checkout', 'open-ready', { symbol: 'external-link' })}</div>
   </dialog>`;
 }
 
@@ -256,6 +295,20 @@ export function progress(state) {
     (state.tx ? external('Transaction', txURL(state.tx)) : '') + '</div>' : '') +
     (state.error ? '<div class="error" role="alert">' + icon('triangle-alert') + '<span>' + esc(state.error) +
       (state.tx ? '<br>' + external('View transaction', txURL(state.tx)) : '') + '</span></div>' : '');
+}
+
+function checkoutSteps(step) {
+  const labels = ['Approve tUSD8', 'Confirm payment', 'Receipt ready'];
+  const current = ['approval', 'payment'].indexOf(step);
+  return '<ol class="checkout-steps" aria-label="Payment steps">' + labels.map((label, index) =>
+    `<li${index === current ? ' aria-current="step"' : ''}><span aria-hidden="true">${index < current ? icon('check') : index + 1}</span>${label}</li>`).join('') + '</ol>';
+}
+
+function lineItems(items) {
+  return `<section class="line-items" aria-label="Invoice items">
+    <div class="line-items-heading"><strong>Items</strong><span>tUSD8</span></div>
+    <ul>${items.map(([label, amount]) => `<li><span>${esc(label)}</span><strong>${price(amount)}</strong></li>`).join('')}</ul>
+  </section>`;
 }
 
 function invoiceProof(invoice, status) {
@@ -307,6 +360,7 @@ export function checkout(state, invoice, link) {
           <h1>${esc(invoice.title || 'Invoice #' + invoice.id)}</h1>
           <p>From ${esc(invoice.merchant || shortAddress(invoice.issuer))}${verified ? ' <span class="verified-name" aria-label="Invoice details verified" title="Invoice details match the on-chain hash">' + icon('shield-check') + '</span>' : ''}</p>
         </div>
+        ${invoice.items ? lineItems(invoice.items) : ''}
         <dl class="checkout-details">
           <div><dt>${paid ? 'Paid on (UTC)' : 'Due date (UTC)'}</dt><dd>${dateText(paid ? invoice.paidAt : invoice.dueAt)}</dd></div>
           <div><dt>Recipient</dt><dd>${external(esc(shortAddress(invoice.issuer)), addressURL(invoice.issuer))}</dd></div>
@@ -317,12 +371,15 @@ export function checkout(state, invoice, link) {
         <div class="checkout-amount"><span>${amountLabel}</span><div>${price(invoice.amount)} <small>tUSD8</small></div></div>
         ${!verified ? '<div class="checkout-note warning">' + icon('triangle-alert') + ' The invoice description is unverified. Check the recipient and amount.</div>' : ''}
         ${status === 'open' ? '<div class="checkout-note">' + icon('shield-check') + ' Test tokens settle directly to the recipient’s wallet.</div>' : ''}
+        ${state.paymentStep ? checkoutSteps(state.paymentStep) : ''}
         ${progress(state)}
         <div class="checkout-actions">
           ${status === 'open' ? walletAction(paymentAction, 'pay', 'primary', state.busy) : ''}
           ${status === 'open' && !state.account ? openInMetaMask() : ''}
           ${paid && invoice.hash ? external('Verify transaction', txURL(invoice.hash)) : ''}
+          ${paid ? button('Download receipt PDF', 'download-receipt', { symbol: 'download', className: 'primary receipt-download' }) : ''}
           ${button(paid ? 'Copy receipt link' : 'Copy invoice link', 'copy-link', { symbol: 'copy' })}
+          ${status === 'open' && !state.busy ? whatsappLink(invoice, link) : ''}
           ${cancellable ? button('Cancel invoice', 'cancel-invoice', { className: 'quiet', disabled: state.busy }) : ''}
         </div>
         <input class="checkout-share-url" aria-label="${paid ? 'Receipt link' : 'Invoice link'}" data-share-url readonly hidden value="${esc(link)}">

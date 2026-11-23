@@ -23,8 +23,9 @@ const state = {
   account: '',
   walletChain: undefined,
   query: '', filter: 'all', offset: 0, count: 0, live: [],
-  loading: false, busy: false, error: '', progress: '', tx: '',
-  draft: { merchant: model.readLocal('folio.merchant', ''), title: '', amount: '', due: 7 },
+  summary: null, summaryFailed: false,
+  loading: false, busy: false, error: '', progress: '', tx: '', paymentStep: '',
+  draft: { merchant: model.readLocal('folio.merchant', ''), title: '', amount: '', due: 7, items: [] },
   dialog: '', ready: null, current: null, featured: null,
 };
 let routeVersion = 0;
@@ -37,6 +38,7 @@ const paymentStatus = document.querySelector('#payment-status');
 let latestWallet;
 let walletModalVisible = false;
 let heroStarted;
+let downloadingReceipt = false;
 
 function saveRecordedIds(ids) {
   recordedIds = ids;
@@ -48,18 +50,25 @@ function invoiceLink(invoice) {
   const url = new URL('/', location.origin);
   url.searchParams.set('invoice', invoice.id);
   url.searchParams.set('contract', invoice.contract);
-  if (invoice.merchant && invoice.title) url.hash = model.pack([invoice.merchant, invoice.title]);
+  if (invoice.memo) url.hash = model.pack(invoice.memo);
   return url.href;
 }
 
 function metadataValid(value) {
-  return Array.isArray(value) && typeof value[0] === 'string' && typeof value[1] === 'string' &&
-    value[0].length > 0 && value[0].length <= 60 && value[1].length > 0 && value[1].length <= 100;
+  if (!Array.isArray(value) || ![2, 3].includes(value.length)) return false;
+  const [merchant, title, items] = value;
+  if (typeof merchant !== 'string' || !merchant.trim() || merchant.length > 60 ||
+      typeof title !== 'string' || !title.trim() || title.length > 100) return false;
+  return value.length === 2 || Array.isArray(items) && items.length > 0 && items.length <= model.MAX_LINE_ITEMS &&
+    items.every((item) => Array.isArray(item) && item.length === 2 &&
+      typeof item[0] === 'string' && item[0].trim() && item[0].length <= model.ITEM_LABEL_LIMIT && model.amountValid(item[1]));
 }
 
 function enrich(invoice, memo) {
-  if (!metadataValid(memo) || chain.hashMemo(...memo.slice(0, 2)) !== invoice.memoHash) return invoice;
-  return { ...invoice, merchant: memo[0], title: memo[1], memoVerified: true };
+  if (!metadataValid(memo) || chain.hashMemo(memo) !== invoice.memoHash) return invoice;
+  const [merchant, title, items] = memo;
+  if (items && model.sumItems(items) !== invoice.amount) return invoice;
+  return { ...invoice, merchant, title, items, memo, memoVerified: true };
 }
 
 function render() {
@@ -163,12 +172,16 @@ function notice(text) {
 }
 
 function clearMessage() {
-  state.error = state.progress = state.tx = '';
+  state.error = state.progress = state.tx = state.paymentStep = '';
 }
 
-function notifyProgress(text, hash = '') {
+function notifyProgress(text, hash = '', step = '') {
   state.progress = text;
   state.tx = hash;
+  if (step) {
+    state.paymentStep = step;
+    paymentStatus.textContent = text;
+  }
   if (state.view === 'checkout') render();
   else {
     const target = document.querySelector('.progress-inline');
@@ -196,6 +209,7 @@ async function run(operation) {
     state.error = friendly(error);
     state.tx = error.hash || state.tx;
     state.progress = '';
+    state.paymentStep = '';
   } finally {
     state.busy = false;
     render();
@@ -240,6 +254,22 @@ async function copyLink(control) {
   status.textContent = 'Automatic copy is unavailable. Press and hold the link or use your keyboard to copy it.';
 }
 
+async function downloadReceipt(control) {
+  const invoice = state.current;
+  if (invoice?.state !== 'paid' || downloadingReceipt) return;
+  downloadingReceipt = true;
+  control.setAttribute('aria-busy', 'true');
+  try {
+    const { saveReceipt } = await import('./receipt.js');
+    await saveReceipt(invoice, invoiceLink(invoice));
+  } catch {
+    notice('Could not download the receipt. Please try again.');
+  } finally {
+    downloadingReceipt = false;
+    control.removeAttribute('aria-busy');
+  }
+}
+
 function settings() {
   state.view = 'settings';
   state.dialog = '';
@@ -249,22 +279,31 @@ function settings() {
   app.querySelector('.setup-intro h1').focus({ preventScroll: true });
 }
 
-async function loadList() {
+async function invoicePage(offset) {
+  if (!state.recording) return chain.listInvoices(workspaceContract, state.account, offset);
+  return {
+    invoices: await Promise.all(recordedIds.slice(offset, offset + 10).map((id) => chain.getInvoice(workspaceContract, id))),
+    count: recordedIds.length,
+  };
+}
+
+async function loadList(refreshSummary = true) {
   const version = ++listVersion;
   if (state.view !== 'invoices' || (state.recording ? !recordedIds.length : !state.account)) return;
+  refreshSummary ||= !state.summary && !state.summaryFailed;
+  if (refreshSummary) state.summaryFailed = false;
   state.loading = true;
   render();
+  const offset = state.offset;
+  let page;
   try {
-    const { invoices, count } = state.recording ? {
-      invoices: await Promise.all(recordedIds.slice(state.offset, state.offset + 10)
-        .map((id) => chain.getInvoice(workspaceContract, id))),
-      count: recordedIds.length,
-    } : await chain.listInvoices(workspaceContract, state.account, state.offset);
+    page = await invoicePage(offset);
     if (version !== listVersion) return;
-    state.live = invoices.map((invoice) => enrich(invoice, model.getMemo(invoice)));
-    state.count = count;
+    state.live = page.invoices.map((invoice) => enrich(invoice, model.getMemo(invoice)));
+    state.count = page.count;
   } catch (error) {
     if (version !== listVersion) return;
+    if (refreshSummary) state.summaryFailed = true;
     notice(friendly(error));
   } finally {
     if (version === listVersion && state.view === 'invoices') {
@@ -272,6 +311,25 @@ async function loadList() {
       render();
     }
   }
+  if (!page || !refreshSummary) return;
+
+  try {
+    const invoices = new Map(page.invoices.map((invoice) => [invoice.id, invoice]));
+    for (let start = 0; start < page.count; start += 10) {
+      if (version !== listVersion || state.view !== 'invoices') return;
+      if (start === offset) continue;
+      const next = await invoicePage(start);
+      if (next.count !== page.count) throw new Error('Invoice count changed during refresh.');
+      for (const invoice of next.invoices) invoices.set(invoice.id, invoice);
+    }
+    if (version !== listVersion || state.view !== 'invoices') return;
+    if (invoices.size !== page.count) throw new Error('Some invoices changed during refresh.');
+    state.summary = [...invoices.values()];
+  } catch {
+    if (version !== listVersion || state.view !== 'invoices') return;
+    state.summaryFailed = true;
+  }
+  ui.refreshTotals(state);
 }
 
 function syncWallet() {
@@ -286,6 +344,8 @@ function syncWallet() {
     state.live = [];
     state.count = 0;
     state.offset = 0;
+    state.summary = null;
+    state.summaryFailed = false;
     if (state.view === 'invoices') state.loading = false;
   }
   render();
@@ -336,6 +396,8 @@ async function loadRoute() {
     state.live = [];
     state.count = 0;
     state.offset = 0;
+    state.summary = null;
+    state.summaryFailed = false;
     state.query = '';
     state.filter = 'all';
     state.featured = null;
@@ -421,38 +483,45 @@ function connect() {
   app.querySelector('dialog[open]')?.close();
 }
 
-function amountValid(value) {
-  return typeof value === 'string' && /^(?:0|[1-9]\d{0,8})(?:\.\d{1,6})?$/.test(value) && Number(value) > 0;
-}
-
 async function createInvoice(form) {
-  const values = Object.fromEntries(new FormData(form));
+  const values = new FormData(form);
+  const itemAmounts = values.getAll('item-amount');
+  const items = values.getAll('item-label').map((label, index) => [label.trim(), itemAmounts[index].trim()]);
   state.draft = {
-    merchant: String(values.merchant).trim(), title: String(values.title).trim(),
-    amount: String(values.amount).trim(), due: Number(values.due),
+    merchant: String(values.get('merchant')).trim(), title: String(values.get('title')).trim(),
+    amount: items.length ? state.draft.amount : String(values.get('amount')).trim(),
+    due: Number(values.get('due')), items,
   };
   if (!state.account || state.walletChain !== CHAIN_ID) { connect(); return; }
   await run(async () => {
-    if (!metadataValid([state.draft.merchant, state.draft.title])) throw new Error('Enter your business name and an invoice description.');
-    if (!amountValid(state.draft.amount)) throw new Error('Enter a positive amount with up to six decimal places, for example 10.00.');
+    const memo = [state.draft.merchant, state.draft.title];
+    if (!metadataValid(memo)) throw new Error('Enter your business name and an invoice description.');
+    if (items.length) memo.push(items);
+    const amount = items.length ? model.sumItems(items) : state.draft.amount;
+    if (!metadataValid(memo) || (!items.length && !model.amountValid(amount))) {
+      throw new Error(items.length ? 'Give each item a description and a positive amount with up to six decimal places.' :
+        'Enter a positive amount with up to six decimal places, for example 10.00.');
+    }
     if (![1, 7, 14, 30].includes(state.draft.due)) throw new Error('Select a payment window.');
-    const details = { ...state.draft, dueAt: model.now() + state.draft.due * model.DAY };
+    const details = { memo, amount, dueAt: model.now() + state.draft.due * model.DAY };
     const { signer } = await wallet();
     const invoice = await chain.issueInvoice(workspaceContract, signer, details, notifyProgress);
-    model.saveMemo(invoice, details.merchant, details.title);
-    state.ready = enrich(invoice, [details.merchant, details.title]);
-    if (state.recording) {
-      saveRecordedIds([invoice.id, ...recordedIds.filter((id) => id !== invoice.id)]);
-      state.offset = 0;
-    }
-    state.live = [state.ready, ...state.live.filter((item) => item.id !== state.ready.id)].slice(0, 10);
+    model.saveMemo(invoice, memo);
+    state.ready = enrich(invoice, memo);
+    if (state.recording) saveRecordedIds([invoice.id, ...recordedIds.filter((id) => id !== invoice.id)]);
+    ++listVersion;
+    state.loading = false;
+    state.live = state.offset === 0 ? [state.ready, ...state.live.filter((item) => item.id !== state.ready.id)].slice(0, 10) : [state.ready];
+    state.offset = 0;
     state.count = state.recording ? recordedIds.length : state.count + 1;
-    model.writeLocal('folio.merchant', details.merchant);
-    state.draft = { merchant: details.merchant, title: '', amount: '', due: 7 };
+    if (state.summary) state.summary = [state.ready, ...state.summary.filter((item) => item.id !== state.ready.id)];
+    model.writeLocal('folio.merchant', memo[0]);
+    state.draft = { merchant: memo[0], title: '', amount: '', due: 7, items: [] };
     state.filter = 'all';
     state.query = '';
     state.dialog = 'ready';
   });
+  if (state.dialog === 'ready' && state.view === 'invoices') void loadList();
 }
 
 async function pay() {
@@ -461,11 +530,14 @@ async function pay() {
   if (!invoice || model.invoiceStatus(invoice) !== 'open') return;
   if (!state.account || state.walletChain !== CHAIN_ID) { connect(); return; }
   await run(async () => {
+    notifyProgress('Checking wallet balance and tUSD8 approval…', '', 'checking');
     const payer = await wallet();
-    const settled = await chain.payInvoice(invoice, payer.signer, notifyProgress);
+    const settled = await chain.payInvoice(invoice, payer.signer, (text, hash, step) => {
+      if (version === routeVersion) notifyProgress(text, hash, step);
+    });
     if (version !== routeVersion) return;
     clearInterval(receiptTimer);
-    updateCheckout(enrich(settled, [invoice.merchant, invoice.title]));
+    updateCheckout(enrich(settled, invoice.memo));
   });
 }
 
@@ -475,7 +547,14 @@ app.addEventListener('input', (event) => {
     state.query = target.value;
     ui.refreshTable(state, state.live);
   }
-  if (target.form?.id === 'invoice-form') state.draft[target.name] = target.name === 'due' ? Number(target.value) : target.value;
+  if (target.form?.id !== 'invoice-form') return;
+  const row = target.closest('[data-item-row]');
+  if (row) {
+    state.draft.items[Number(row.dataset.itemRow)][target.name === 'item-label' ? 0 : 1] = target.value;
+    target.form.elements.amount.value = model.sumItems(state.draft.items.map(([label, amount]) => [label, amount.trim()]));
+  } else if (['due', 'merchant', 'title', 'amount'].includes(target.name)) {
+    state.draft[target.name] = target.name === 'due' ? Number(target.value) : target.value;
+  }
 });
 
 app.addEventListener('submit', (event) => {
@@ -498,6 +577,18 @@ app.addEventListener('click', (event) => {
       break;
     case 'preview': selectPreview(control); break;
     case 'new': state.dialog = 'new'; clearMessage(); render(); break;
+    case 'add-item':
+      if (state.draft.items.length >= model.MAX_LINE_ITEMS) break;
+      state.draft.items.push(['', '']);
+      render();
+      app.querySelector('#item-label-' + (state.draft.items.length - 1))?.focus();
+      break;
+    case 'remove-item':
+      state.draft.items.splice(Number(id), 1);
+      render();
+      (app.querySelector('#item-label-' + Math.min(Number(id), state.draft.items.length - 1)) ||
+        app.querySelector('[data-action="add-item"]'))?.focus();
+      break;
     case 'close': closeDialog(); break;
     case 'settings': settings(); break;
     case 'connect': connect(); break;
@@ -506,10 +597,11 @@ app.addEventListener('click', (event) => {
     case 'previous':
     case 'next':
       state.offset = Math.max(0, state.offset + (action === 'next' ? 10 : -10));
-      void loadList();
+      void loadList(false);
       break;
     case 'open': openInvoice(state.live.find((invoice) => invoice.id === id)); break;
     case 'copy-link': void copyLink(control); break;
+    case 'download-receipt': void downloadReceipt(control); break;
     case 'open-ready': openInvoice(state.ready); break;
     case 'reload-checkout': void loadRoute(); break;
     case 'pay': void pay(); break;
@@ -518,7 +610,7 @@ app.addEventListener('click', (event) => {
       void run(async () => {
         const previous = state.current;
         const user = await wallet();
-        state.current = enrich(await chain.cancelInvoice(previous, user.signer, notifyProgress), [previous.merchant, previous.title]);
+        state.current = enrich(await chain.cancelInvoice(previous, user.signer, notifyProgress), previous.memo);
         notice('Invoice cancelled');
       });
       break;

@@ -15,7 +15,7 @@ const rpc = new JsonRpcProvider(RPC, CHAIN_ID, { batchMaxCount: 1 });
 const abi = new Interface(artifact.abi);
 const checks = new Map();
 
-export const hashMemo = (merchant, title) => keccak256(toUtf8Bytes(JSON.stringify([merchant, title])));
+export const hashMemo = (memo) => keccak256(toUtf8Bytes(JSON.stringify(memo)));
 export const addressOK = (value) => typeof value === 'string' && isAddress(value);
 export const shortAddress = (value) => value ? value.slice(0, 6) + '…' + value.slice(-4) : '';
 export const txURL = (hash) => EXPLORER + '/tx/' + hash;
@@ -82,7 +82,7 @@ export async function receiptHash(invoice) {
 export async function issueInvoice(address, signer, values, progress) {
   const c = (await verifyContract(address)).connect(signer);
   progress('Confirm the invoice in your wallet…');
-  const tx = await c.createInvoice(parseUnits(values.amount, 6), values.dueAt, hashMemo(values.merchant, values.title));
+  const tx = await c.createInvoice(parseUnits(values.amount, 6), values.dueAt, hashMemo(values.memo));
   progress('Publishing invoice on Aevum…', tx.hash);
   const receipt = await confirmed(tx.hash);
   for (const log of receipt.logs) {
@@ -94,6 +94,7 @@ export async function issueInvoice(address, signer, values, progress) {
 }
 
 async function sendPaymentStep(signer, from, request, step, progress) {
+  const stage = step === 'payment' ? 'payment' : 'approval';
   const tx = { ...request, from };
   let gasLimit;
   try {
@@ -113,7 +114,7 @@ async function sendPaymentStep(signer, from, request, step, progress) {
   if ((await signer.provider.getNetwork()).chainId !== BigInt(CHAIN_ID)) {
     throw new Error('Switch your wallet to Aevum Testnet.');
   }
-  progress(step === 'payment' ? 'Confirm the payment in your wallet…' : 'Approve the exact invoice amount in your wallet…');
+  progress(stage === 'payment' ? 'Confirm the payment in your wallet…' : 'Approve the exact invoice amount in your wallet…', '', stage);
   let hash;
   try {
     // The wallet still confirms and sends the exact request. Aevum supplies the gas estimate and receipt.
@@ -122,7 +123,7 @@ async function sendPaymentStep(signer, from, request, step, progress) {
     if (error.code !== 'CALL_EXCEPTION' || (error.data && error.data !== '0x')) throw error;
     throw new Error(`Your wallet could not submit the ${step}. Review any security warning shown by the wallet.`, { cause: error });
   }
-  progress(`Confirming ${step} on Aevum…`, hash);
+  progress(`Confirming ${step} on Aevum…`, hash, stage);
   await confirmed(hash);
   return hash;
 }

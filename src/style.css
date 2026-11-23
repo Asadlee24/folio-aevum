@@ -72,6 +72,28 @@ svg { width: 1.125rem; height: 1.125rem; flex: 0 0 auto; vertical-align: middle;
 .section-head .primary { box-shadow: 0 3px 14px #8971e828, inset 0 1px #ffffff80; }
 .eyebrow { color: var(--muted); font-size: .84rem; font-weight: 650; }
 .invoice-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.invoice-totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 17px; }
+.total-card {
+  min-width: 0;
+  padding: clamp(11px, 2.1vw, 20px);
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: linear-gradient(145deg, #222138, var(--surface));
+  box-shadow: inset 0 1px #ffffff0e;
+}
+.total-card dt { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: .85rem; font-weight: 690; }
+.total-card dt svg { width: 15px; height: 15px; color: var(--accent); }
+.total-card.paid dt svg { color: #a0ecc8; }
+.total-card.expired dt svg { color: #ffc9a4; }
+.total-card dd {
+  margin: 7px 0 0;
+  font: 780 clamp(1.15rem, 2.9vw, 1.95rem)/1.15 var(--display);
+  letter-spacing: -.045em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.total-card dd small { color: var(--muted); font: 650 .73rem var(--mono); white-space: nowrap; }
+.totals-status { margin: 0 0 14px; color: var(--muted); font-size: .85rem; }
 .account-label { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font: .84rem var(--mono); }
 .refresh-button { font-size: .86rem; }
 .refresh-button svg { width: 15px; height: 15px; }
@@ -154,6 +176,12 @@ body:has(dialog[open]) { overflow: hidden; }
 .invoice-form { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
 .invoice-form label, .link-label { font-size: .91rem; font-weight: 690; }
 .invoice-form > input { margin-bottom: 6px; }
+.composer-items { display: grid; gap: 7px; margin: 0 0 7px; }
+.item-input-row, .item-column-labels { display: grid; grid-template-columns: minmax(0, 1fr) minmax(70px, 27%) 44px; gap: 6px; align-items: center; }
+.item-column-labels { padding-inline: 2px; color: var(--muted); font-size: .78rem; }
+.item-input-row input { width: 100%; }
+.item-input-row .icon-button { width: 44px; height: 44px; }
+.add-item { justify-self: start; }
 .form-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .85fr); gap: 12px; }
 .form-pair label { display: block; margin-bottom: 6px; }
 .amount-input, .select-wrap { position: relative; }
@@ -165,6 +193,8 @@ body:has(dialog[open]) { overflow: hidden; }
 .form-note, .checkout-note { display: flex; align-items: center; gap: 8px; font-size: .85rem; line-height: 1.4; color: var(--muted); margin: 8px 0 2px; }
 .form-note svg, .checkout-note svg { color: var(--accent); }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 11px; }
+.ready-actions { flex-wrap: wrap; }
+.ready-actions > .button { flex: 1 1 155px; }
 .summary { display: flex; justify-content: space-between; gap: 12px; padding: 13px; margin: 0 0 14px; border-radius: 8px; background: var(--soft); font-size: .94rem; }
 .summary strong { overflow-wrap: anywhere; }
 .summary span { white-space: nowrap; }
@@ -283,6 +313,33 @@ body:has(dialog[open]) { overflow: hidden; }
 .checkout-actions { display: grid; gap: 8px; margin-top: 14px; }
 .checkout-actions > .button { width: 100%; min-height: 44px; }
 .checkout-actions > .external { justify-content: center; min-height: 44px; border: 1px solid #346958; border-radius: 11px; background: var(--mint); color: #aef4db; font-weight: 730; }
+.checkout-actions > .receipt-download {
+  color: #123529;
+  background: linear-gradient(180deg, #c8f8e1, #91e2bd);
+  border-color: #cbffe7;
+  box-shadow: inset 0 1px #fff8;
+}
+@media (hover: hover) {
+  .checkout-actions > .receipt-download:hover { background: #d2fce9; }
+}
+.receipt-download[aria-busy="true"] { cursor: progress; opacity: .75; }
+.checkout-steps { list-style: none; padding: 0; margin: 14px 0; display: grid; gap: 7px; }
+.checkout-steps li { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .86rem; }
+.checkout-steps li[aria-current="step"] { color: var(--ink); font-weight: 730; }
+.checkout-steps li > span {
+  display: grid; place-items: center; flex: none; width: 24px; height: 24px;
+  border-radius: 50%; background: var(--soft); color: var(--accent); font: 700 .75rem var(--mono);
+}
+.checkout-steps li[aria-current="step"] > span { background: var(--accent); color: #21143b; }
+.checkout-steps li svg { width: 14px; height: 14px; color: #b1e9d1; }
+.line-items { margin: 16px 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.line-items-heading, .line-items li { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 9px 11px; }
+.line-items-heading { background: #212137; font-size: .84rem; }
+.line-items-heading > span { color: var(--muted); font: .72rem var(--mono); }
+.line-items ul { margin: 0; padding: 0; list-style: none; }
+.line-items li { border-top: 1px solid var(--line); font-size: .88rem; }
+.line-items li > span { overflow-wrap: anywhere; }
+.line-items li strong { flex: none; font-variant-numeric: tabular-nums; }
 .invoice-proof { margin-top: 17px; border-radius: 17px; background: var(--surface); border: 1px solid var(--line); padding: 17px 20px; }
 .proof-heading { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 11px; }
 .proof-heading h2 { font: 780 1.02rem/1.2 var(--display); margin: 0; }
@@ -335,6 +392,11 @@ body:has(dialog[open]) { overflow: hidden; }
   .composer { margin: auto 0 0; max-width: none; width: 100%; max-height: calc(100dvh - 16px); padding: 16px 18px max(22px, env(safe-area-inset-bottom)); border-radius: 22px 22px 0 0; }
 }
 @media (max-width: 380px) {
+  .invoice-totals { gap: 6px; }
+  .total-card { padding-inline: 8px; }
+  .total-card dt { font-size: .76rem; line-height: 1.25; }
+  .total-card dt svg { display: none; }
+  .total-card dd small { display: block; margin-top: 4px; }
   .section-head .button { padding-inline: 10px; }
   .section-head .button svg { width: 15px; height: 15px; }
   .example-row { gap: 7px; }
