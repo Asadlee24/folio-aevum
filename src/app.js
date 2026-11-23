@@ -1,9 +1,10 @@
 import '@fontsource-variable/dm-sans';
 import '@fontsource-variable/manrope';
-import { CONTRACT, FEATURED_INVOICE } from './config.js';
+import { CHAIN_ID, CONTRACT, FEATURED_INVOICE } from './config.js';
 import * as chain from './chain.js';
 import * as model from './model.js';
 import * as ui from './ui.js';
+import { mountWallet, showWalletModal, wallet } from './wallet.jsx';
 
 const app = document.querySelector('#app');
 const savedContract = model.readLocal('folio.contract', null);
@@ -20,6 +21,7 @@ const state = {
   recording: false,
   preview: 'invoice',
   account: '',
+  walletChain: undefined,
   query: '', filter: 'all', offset: 0, count: 0, live: [],
   loading: false, busy: false, error: '', progress: '', tx: '',
   draft: { merchant: model.readLocal('folio.merchant', ''), title: '', amount: '', due: 7 },
@@ -29,7 +31,8 @@ let routeVersion = 0;
 let listVersion = 0;
 let toastTimer;
 let receiptTimer;
-let issuingWallet = null;
+let latestWallet;
+let walletModalVisible = false;
 let firstHeroRendered = false;
 
 function saveRecordedIds(ids) {
@@ -76,7 +79,7 @@ function render() {
   enablePreviewTilt(scene);
 
   const element = app.querySelector('dialog');
-  if (element) {
+  if (element && !walletModalVisible) {
     element.classList.toggle('entering', previousDialog !== element.getAttribute('aria-labelledby'));
     element.showModal();
     element.addEventListener('cancel', (event) => {
@@ -178,6 +181,7 @@ async function run(operation) {
   } finally {
     state.busy = false;
     render();
+    syncWallet();
     if (state.error && state.view === 'invoices' && !state.dialog) notice(state.error);
   }
 }
@@ -252,14 +256,22 @@ async function loadList() {
   }
 }
 
-async function restoreWallet() {
-  if (!window.ethereum) return;
-  try {
-    issuingWallet = await chain.wallet({ request: false });
-    state.account = issuingWallet.address;
-    if (state.view === 'invoices') await loadList();
-    else render();
-  } catch { /* Show the disconnected state until a wallet is requested. */ }
+function syncWallet() {
+  if (state.busy || !latestWallet || ['connecting', 'reconnecting'].includes(latestWallet.status)) return;
+  const { address = '', chainId } = latestWallet;
+  const changedAccount = state.account.toLowerCase() !== address.toLowerCase();
+  if (!changedAccount && state.walletChain === chainId) return;
+  state.account = address;
+  state.walletChain = chainId;
+  if (changedAccount && !state.recording) {
+    ++listVersion;
+    state.live = [];
+    state.count = 0;
+    state.offset = 0;
+    if (state.view === 'invoices') state.loading = false;
+  }
+  render();
+  if (changedAccount && state.view === 'invoices') void loadList();
 }
 
 function loadHash(invoice, version) {
@@ -372,10 +384,13 @@ function openInvoice(invoice) {
   if (invoice) go(invoiceLink(invoice));
 }
 
-async function connect() {
-  issuingWallet = await chain.wallet();
-  state.account = issuingWallet.address;
-  if (state.view === 'invoices') await loadList();
+function connect() {
+  if (!showWalletModal()) {
+    notice('Wallet is still loading. Try again in a moment.');
+    return;
+  }
+  walletModalVisible = true;
+  app.querySelector('dialog[open]')?.close();
 }
 
 function amountValid(value) {
@@ -388,15 +403,14 @@ async function createInvoice(form) {
     merchant: String(values.merchant).trim(), title: String(values.title).trim(),
     amount: String(values.amount).trim(), due: Number(values.due),
   };
+  if (!state.account || state.walletChain !== CHAIN_ID) { connect(); return; }
   await run(async () => {
     if (!metadataValid([state.draft.merchant, state.draft.title])) throw new Error('Enter your business name and an invoice description.');
     if (!amountValid(state.draft.amount)) throw new Error('Enter a positive amount with up to six decimal places, for example 10.00.');
     if (![1, 7, 14, 30].includes(state.draft.due)) throw new Error('Select a payment window.');
     const details = { ...state.draft, dueAt: model.now() + state.draft.due * model.DAY };
-    try { issuingWallet = await chain.wallet({ request: false }); }
-    catch { issuingWallet = await chain.wallet(); }
-    state.account = issuingWallet.address;
-    const invoice = await chain.issueInvoice(workspaceContract, issuingWallet.signer, details, notifyProgress);
+    const { signer } = await wallet();
+    const invoice = await chain.issueInvoice(workspaceContract, signer, details, notifyProgress);
     model.saveMemo(invoice, details.merchant, details.title);
     state.ready = enrich(invoice, [details.merchant, details.title]);
     if (state.recording) {
@@ -416,10 +430,9 @@ async function createInvoice(form) {
 async function pay() {
   const invoice = state.current;
   if (!invoice || model.invoiceStatus(invoice) !== 'open') return;
+  if (!state.account || state.walletChain !== CHAIN_ID) { connect(); return; }
   await run(async () => {
-    if (!state.account) { await connect(); return; }
-    const payer = await chain.wallet();
-    state.account = payer.address;
+    const payer = await wallet();
     const settled = await chain.payInvoice(invoice, payer.signer, notifyProgress);
     state.current = enrich(settled, [invoice.merchant, invoice.title]);
   });
@@ -456,7 +469,7 @@ app.addEventListener('click', (event) => {
     case 'new': state.dialog = 'new'; clearMessage(); render(); break;
     case 'close': closeDialog(); break;
     case 'settings': settings(); break;
-    case 'connect': void run(connect); break;
+    case 'connect': connect(); break;
     case 'filter': state.filter = filter; render(); break;
     case 'refresh': void loadList(); break;
     case 'previous':
@@ -473,7 +486,7 @@ app.addEventListener('click', (event) => {
       if (!window.confirm('Cancel this invoice? Your client will no longer be able to pay it.')) break;
       void run(async () => {
         const previous = state.current;
-        const user = await chain.wallet();
+        const user = await wallet();
         state.current = enrich(await chain.cancelInvoice(previous, user.signer, notifyProgress), [previous.merchant, previous.title]);
         notice('Invoice cancelled');
       });
@@ -482,25 +495,13 @@ app.addEventListener('click', (event) => {
 });
 
 window.addEventListener('popstate', () => { void loadRoute(); });
-window.ethereum?.on?.('accountsChanged', () => {
-  issuingWallet = null;
-  state.account = '';
-  state.live = [];
-  state.count = 0;
-  state.offset = 0;
-  if (!state.busy) { render(); void restoreWallet(); }
-});
-window.ethereum?.on?.('chainChanged', () => {
-  issuingWallet = null;
-  if (!state.busy) {
-    state.account = '';
-    state.live = [];
-    state.count = 0;
-    state.offset = 0;
-    render();
-    void restoreWallet();
+void loadRoute();
+mountWallet((account) => {
+  latestWallet = account;
+  syncWallet();
+}, (visible) => {
+  if (walletModalVisible && !visible) {
+    walletModalVisible = false;
+    if (state.dialog) render();
   }
 });
-
-await loadRoute();
-await restoreWallet();

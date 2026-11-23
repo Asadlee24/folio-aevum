@@ -4,6 +4,7 @@ import { isAddress } from 'ethers';
 import { compileFolio } from './compile.mjs';
 
 const defaultContract = process.env.FOLIO_AEVUM_CONTRACT?.trim() ?? '';
+const walletConnectProjectId = process.env.FOLIO_WALLETCONNECT_PROJECT_ID?.trim() ?? '';
 if (defaultContract && !isAddress(defaultContract)) {
   throw new Error('FOLIO_AEVUM_CONTRACT must be a valid Aevum contract address.');
 }
@@ -15,9 +16,13 @@ await build({
   bundle: true,
   format: 'esm',
   target: ['es2022', 'safari16'],
-  outfile: 'dist/app.js',
+  outdir: 'dist',
+  splitting: true,
   minify: true,
-  define: { __FOLIO_DEFAULT_CONTRACT__: JSON.stringify(defaultContract) },
+  define: {
+    __FOLIO_DEFAULT_CONTRACT__: JSON.stringify(defaultContract),
+    __FOLIO_WALLETCONNECT_PROJECT_ID__: JSON.stringify(walletConnectProjectId),
+  },
   legalComments: 'linked',
   loader: { '.svg': 'text', '.woff2': 'file' },
   assetNames: 'assets/[name]-[hash]',

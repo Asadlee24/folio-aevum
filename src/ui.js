@@ -1,6 +1,6 @@
 import { icon } from './icons.js';
 import { addressURL, shortAddress, txURL } from './chain.js';
-import { EXPLORER, FAUCET } from './config.js';
+import { CHAIN_ID, EXPLORER, FAUCET } from './config.js';
 import { dateText, invoiceStatus, price } from './model.js';
 
 export const esc = (value = '') => String(value).replace(/[&<>"']/g, (character) => ({
@@ -15,14 +15,8 @@ const button = (text, action, options = {}) => {
     (symbol ? icon(symbol) : '') + '<span>' + text + '</span></button>';
 };
 const copyStatus = '<p class="copy-status" data-copy-status role="status"></p>';
-function newButton(recording) {
-  const url = new URL('/', location.origin);
-  url.searchParams.set('new', '1');
-  if (recording) url.searchParams.set('record', '1');
-  const link = mobileWalletLink(url.href);
-  return link
-    ? `<a class="button primary" href="${link}">${icon('plus')}<span>New invoice</span></a>`
-    : button('New invoice', 'new', { symbol: 'plus', className: 'primary' });
+function newButton() {
+  return button('New invoice', 'new', { symbol: 'plus', className: 'primary' });
 }
 const clock = '<span class="network-dot" aria-hidden="true"></span>';
 const external = (label, url) => '<a class="external" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' + label + ' ' + icon('external-link') + '</a>';
@@ -36,11 +30,13 @@ export function badge(status) {
 export function header(state, checkout = false) {
   const brand = '<a class="brand" href="' + (state.recording ? '/?record=1' : '/') + '" data-action="home" aria-label="Folio home">' + mark + '<span>folio<span class="word-dot">.</span></span></a>';
   const network = '<span class="net">' + clock + ' Aevum Testnet</span>';
+  const wallet = walletAction(walletLabel(state), 'connect', 'secondary header-wallet', state.busy);
   const nav = checkout ? '' : `<nav aria-label="Workspace" class="primary-nav">
     <button data-action="home" ${state.view === 'invoices' ? 'aria-current="page"' : ''}>Invoices</button>
     <button data-action="settings" ${state.view === 'settings' ? 'aria-current="page"' : ''}>Setup &amp; help</button>
   </nav>`;
-  return '<header class="mast"><div class="mast-inner">' + brand + nav + network + '</div></header>';
+  return '<header class="mast"><div class="mast-inner">' + brand + nav +
+    '<div class="mast-wallet">' + network + wallet + '</div></div></header>';
 }
 
 export function featuredInvoice(featured) {
@@ -78,14 +74,14 @@ function paymentGuide() {
   </section>`;
 }
 
-function hero(preview, recording) {
+function hero(preview) {
   const paid = preview === 'receipt';
   return `<section class="folio-hero" aria-labelledby="hero-title">
     <div class="hero-copy">
       <h1 id="hero-title">Send an invoice.<br><span>Share a receipt.</span></h1>
       <p class="hero-description">Send your client one payment link. Once they pay, that same link becomes a receipt they can verify on Aevum.</p>
       <div class="hero-actions">
-        ${newButton(recording)}
+        ${newButton()}
         <a class="hero-secondary" href="#payment-guide-title">How it works ${icon('chevron-down')}</a>
       </div>
       <p class="hero-footnote">${icon('shield-check')} Testnet payments use test tokens</p>
@@ -170,14 +166,14 @@ function invoiceTable(collection, state) {
 export function workspace(state, collection) {
   if (state.recording && !state.count && !state.loading) {
     return header(state) + '<main class="workspace" id="main" tabindex="-1">' +
-      hero(state.preview, state.recording) + paymentGuide() + '</main>' + footer();
+      hero(state.preview) + paymentGuide() + '</main>' + footer();
   }
   return header(state) + `<main class="workspace" id="main" tabindex="-1">
-    ${hero(state.preview, state.recording)}
+    ${hero(state.preview)}
     <section class="invoices" aria-labelledby="invoice-title">
       <div class="section-head">
         <div><h2 id="invoice-title">Your workspace</h2><p>Manage your invoices and receipts.</p></div>
-        ${newButton(state.recording)}
+        ${newButton()}
       </div>
       ${state.account ? `<div class="invoice-toolbar">
         <span class="account-label">${icon('wallet')} <span>${esc(shortAddress(state.account))}</span></span>
@@ -209,13 +205,13 @@ export function settings(state) {
     <div class="settings-grid">
       <section class="setting"><div class="setting-icon">${icon('receipt')}</div><h2>How payments work</h2>
         <p>Issue an invoice with a fixed amount and due date. Your client pays your wallet directly, and the invoice link becomes a verifiable receipt.</p>
-        <div class="mode-options">${newButton(state.recording)}
+        <div class="mode-options">${newButton()}
           <a class="button secondary" href="${state.recording ? '/' : '/?record=1&amp;fresh=1'}">${state.recording ? 'Show full invoice history' : 'Start clean recording'}</a>
         </div>
       </section>
       <section class="setting"><div class="setting-icon">${icon('wallet')}</div><h2>Wallet and test tokens</h2>
         <p>Connect your wallet to Aevum Testnet. Use tQDAY for gas and tUSD8 to pay invoices.</p>
-        <div class="mode-options">${walletAction(state.account ? 'Wallet connected' : 'Connect wallet', 'connect')} ${external('QDay faucet', FAUCET)}</div>
+        <div class="mode-options">${walletAction(walletLabel(state), 'connect')} ${openInMetaMask()} ${external('QDay faucet', FAUCET)}</div>
         <div class="progress-inline" aria-live="polite">${progress(state)}</div>
       </section>
     </div>
@@ -223,6 +219,7 @@ export function settings(state) {
 }
 
 export function createDialog(state) {
+  const ready = state.account && state.walletChain === CHAIN_ID;
   return `<dialog class="composer" aria-labelledby="create-title">
     <div class="composer-top"><div class="setting-icon">${icon('file-text')}</div><button class="icon-button close" data-action="close" aria-label="Close" ${state.busy ? 'disabled' : ''}>${icon('x')}</button></div>
     <div class="dialog-title"><h2 id="create-title">New invoice</h2><p>Publish an invoice to Aevum and share its payment link.</p></div>
@@ -235,7 +232,8 @@ export function createDialog(state) {
           <select id="due" name="due">${[[1, '24 hours'], [7, '7 days'], [14, '14 days'], [30, '30 days']].map(([v, s]) => '<option value="' + v + '"' + (v === state.draft.due ? ' selected' : '') + '>' + s + '</option>').join('')}</select>${icon('chevron-down')}</div></div></div>
       <div class="form-note">${icon('shield-check')} Amount and recipient are fixed once an invoice is issued.</div>
       <div class="progress-inline" aria-live="polite">${progress(state)}</div>
-      <div class="dialog-actions">${button('Cancel', 'close', { disabled: state.busy })}${button('Create invoice', '', { symbol: 'plus', className: 'primary', type: 'submit', disabled: state.busy })}</div>
+      <div class="dialog-actions">${button('Cancel', 'close', { disabled: state.busy })}${button(ready ? 'Create invoice' : walletLabel(state), '', { symbol: ready ? 'plus' : 'wallet', className: 'primary', type: 'submit', disabled: state.busy })}</div>
+      ${!state.account ? openInMetaMask(true, state.recording) : ''}
     </form>
   </dialog>`;
 }
@@ -288,7 +286,9 @@ export function checkout(state, invoice, link) {
   const paid = status === 'paid';
   const cancellable = state.account && invoice?.issuer.toLowerCase() === state.account.toLowerCase() && invoice.state === 'open';
   const verified = invoice?.memoVerified;
-  const paymentAction = state.account && invoice ? 'Pay ' + price(invoice.amount) + ' tUSD8' : 'Connect wallet to pay';
+  const paymentAction = state.account && state.walletChain === CHAIN_ID && invoice
+    ? 'Pay ' + price(invoice.amount) + ' tUSD8'
+    : state.account ? 'Switch to Aevum' : 'Connect wallet to pay';
   const receiptTitle = paid ? 'Payment receipt' : 'Payment request';
   const amountLabel = paid ? 'AMOUNT PAID' : 'AMOUNT DUE';
 
@@ -317,6 +317,7 @@ export function checkout(state, invoice, link) {
         ${progress(state)}
         <div class="checkout-actions">
           ${status === 'open' ? walletAction(paymentAction, 'pay', 'primary', state.busy) : ''}
+          ${status === 'open' && !state.account ? openInMetaMask() : ''}
           ${paid && invoice.hash ? external('Verify transaction', txURL(invoice.hash)) : ''}
           ${button(paid ? 'Copy receipt link' : 'Copy invoice link', 'copy-link', { symbol: 'copy' })}
           ${cancellable ? button('Cancel invoice', 'cancel-invoice', { className: 'quiet', disabled: state.busy }) : ''}
@@ -327,16 +328,20 @@ export function checkout(state, invoice, link) {
       </section>${invoiceProof(invoice, status)}`) + '</main>' + footer();
 }
 
-function mobileWalletLink(url) {
+function openInMetaMask(composer = false, recording = false) {
   const phone = /iphone|android|ipad/i.test(navigator.userAgent);
-  if (!window.ethereum && phone && url.startsWith('https://')) {
-    return 'https://metamask.app.link/dapp/' + esc(url.slice('https://'.length));
-  }
-  return '';
+  if (!phone || location.protocol !== 'https:' || window.ethereum) return '';
+  const url = new URL(location.href);
+  if (composer) url.searchParams.set('new', '1');
+  if (recording) url.searchParams.set('record', '1');
+  return `<a class="external" href="https://metamask.app.link/dapp/${esc(url.href.slice('https://'.length))}">Open in MetaMask ${icon('external-link')}</a>`;
+}
+
+function walletLabel(state) {
+  if (!state.account) return 'Connect wallet';
+  return state.walletChain === CHAIN_ID ? shortAddress(state.account) : 'Switch to Aevum';
 }
 
 function walletAction(label, action, style = 'secondary', busy = false) {
-  const link = busy ? '' : mobileWalletLink(location.href);
-  if (link) return `<a class="button ${style}" href="${link}">${icon('wallet')}<span>Open in MetaMask</span></a>`;
   return button(label, action, { symbol: 'wallet', className: style, disabled: busy });
 }

@@ -1,11 +1,10 @@
 import {
-  BrowserProvider, Contract, Interface, JsonRpcProvider, formatUnits,
+  Contract, Interface, JsonRpcProvider, formatUnits,
   getAddress, isAddress, keccak256, parseUnits, toUtf8Bytes,
 } from 'ethers';
 import artifact from './contract.generated.json';
 import { CHAIN_ID, RPC, EXPLORER, TOKEN } from './config.js';
 
-const NETWORK = '0x' + CHAIN_ID.toString(16);
 const tokenAbi = [
   'function approve(address spender,uint256 amount) returns (bool)',
   'function allowance(address owner,address spender) view returns (uint256)',
@@ -52,36 +51,6 @@ export async function verifyContract(address) {
     check.catch(() => checks.delete(normalized));
   }
   return checks.get(normalized);
-}
-
-export async function wallet({ request = true } = {}) {
-  const injected = window.ethereum?.providers?.find((p) => p.isMetaMask) ?? window.ethereum;
-  if (!injected) throw new Error('Open Folio in a wallet browser such as MetaMask, or install a browser wallet.');
-  async function ask(method, params) {
-    return injected.request({ method, ...(params ? { params } : {}) });
-  }
-  const accounts = await ask(request ? 'eth_requestAccounts' : 'eth_accounts');
-  if (!accounts?.length) throw new Error('Connect a wallet to continue.');
-  if ((await ask('eth_chainId')).toLowerCase() !== NETWORK) {
-    if (!request) throw new Error('Switch your wallet to Aevum Testnet.');
-    try {
-      await ask('wallet_switchEthereumChain', [{ chainId: NETWORK }]);
-    } catch (error) {
-      if (error.code !== 4902 && error.data?.originalError?.code !== 4902) throw error;
-      await ask('wallet_addEthereumChain', [{
-        chainId: NETWORK, chainName: 'QDay Aevum Testnet',
-        nativeCurrency: { name: 'QDay Test Token', symbol: 'tQDAY', decimals: 18 },
-        rpcUrls: [RPC], blockExplorerUrls: [EXPLORER],
-      }]);
-      if ((await ask('eth_chainId')).toLowerCase() !== NETWORK) {
-        await ask('wallet_switchEthereumChain', [{ chainId: NETWORK }]);
-      }
-    }
-  }
-  if ((await ask('eth_chainId')).toLowerCase() !== NETWORK) throw new Error('Switch your wallet to Aevum Testnet.');
-  const provider = new BrowserProvider(injected);
-  const signer = await provider.getSigner();
-  return { signer, address: await signer.getAddress() };
 }
 
 export async function getInvoice(address, id) {
