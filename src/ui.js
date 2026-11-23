@@ -8,7 +8,6 @@ export const esc = (value = '') => String(value).replace(/[&<>"']/g, (character)
 })[character]);
 
 const mark = '<img class="brand-mark" src="/assets/folio-mark.png" alt="" width="36" height="36">';
-const brand = '<a class="brand" href="/" data-action="home" aria-label="Folio home">' + mark + '<span>folio<span class="word-dot">.</span></span></a>';
 const button = (text, action, options = {}) => {
   const { symbol, className = 'secondary', disabled = false, attrs = '', type = 'button' } = options;
   return '<button type="' + type + '" class="button ' + className + '"' +
@@ -19,6 +18,7 @@ const copyStatus = '<p class="copy-status" data-copy-status role="status"></p>';
 function newButton() {
   const url = new URL('/', location.origin);
   url.searchParams.set('new', '1');
+  if (new URLSearchParams(location.search).get('record') === '1') url.searchParams.set('record', '1');
   const link = mobileWalletLink(url.href);
   return link
     ? `<a class="button primary" href="${link}">${icon('plus')}<span>New invoice</span></a>`
@@ -34,6 +34,7 @@ export function badge(status) {
 }
 
 export function header(state, checkout = false) {
+  const brand = '<a class="brand" href="' + (state.recording ? '/?record=1' : '/') + '" data-action="home" aria-label="Folio home">' + mark + '<span>folio<span class="word-dot">.</span></span></a>';
   const network = '<span class="net">' + clock + ' Aevum Testnet</span>';
   const nav = checkout ? '' : `<nav aria-label="Workspace" class="primary-nav">
     <button data-action="home" ${state.view === 'invoices' ? 'aria-current="page"' : ''}>Invoices</button>
@@ -167,6 +168,10 @@ function invoiceTable(collection, state) {
 }
 
 export function workspace(state, collection) {
+  if (state.recording) {
+    return header(state) + '<main class="workspace" id="main" tabindex="-1">' +
+      hero(state.preview) + paymentGuide() + '</main>' + footer();
+  }
   return header(state) + `<main class="workspace" id="main" tabindex="-1">
     ${hero(state.preview)}
     <section class="invoices" aria-labelledby="invoice-title">
