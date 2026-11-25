@@ -38,6 +38,7 @@ const paymentStatus = document.querySelector('#payment-status');
 let latestWallet;
 let walletModalVisible = false;
 let heroStarted;
+let checkoutStarted;
 let downloadingReceipt = false;
 
 function saveRecordedIds(ids) {
@@ -94,6 +95,16 @@ function render() {
     }
   }
   enablePreviewTilt(scene);
+
+  const checkoutCard = app.querySelector('.checkout-card[aria-labelledby="checkout-title"]');
+  if (checkoutCard) {
+    checkoutStarted ??= performance.now();
+    const elapsed = performance.now() - checkoutStarted;
+    if (elapsed < 600) {
+      checkoutCard.parentElement.style.setProperty('--checkout-offset', `-${elapsed}ms`);
+      checkoutCard.parentElement.classList.add('checkout-first-entry');
+    }
+  }
 
   if (confirmationStarted !== undefined) {
     const elapsed = performance.now() - confirmationStarted;
@@ -406,6 +417,7 @@ async function loadRoute() {
   state.dialog = '';
   state.ready = null;
   state.current = null;
+  checkoutStarted = undefined;
   confirmationStarted = undefined;
   paymentStatus.textContent = '';
   state.loading = false;

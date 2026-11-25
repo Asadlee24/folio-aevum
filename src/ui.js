@@ -347,17 +347,20 @@ export function checkout(state, invoice, link) {
 
   return header(state, true) + '<main class="checkout-shell" id="main" tabindex="-1"><button class="back-button" data-action="home">' + icon('arrow-left') + ' Invoices</button>' +
     (!invoice ? '<section class="checkout-card">' + (state.loading ?
-      '<div class="empty">' + icon('loader-circle') + '<p>Checking invoice on Aevum…</p></div>' :
+      '<div class="checkout-loading" role="status">' + icon('loader-circle') + '<span>Checking invoice on Aevum…</span></div>' :
       '<h1>Invoice unavailable</h1>' + progress(state) + button('Try again', 'reload-checkout')) + '</section>' :
-      `<section class="checkout-card ${paid ? 'receipt-paid' : ''}">
+      `<section class="checkout-card ${paid ? 'receipt-paid' : ''}" aria-labelledby="checkout-title">
       ${paid ? `<div class="payment-confirmation">
         <span class="confirmation-mark" aria-hidden="true">${icon('check')}</span>
         <div class="confirmation-copy"><strong>Payment confirmed</strong><span>Settled on Aevum Testnet</span></div>
       </div>` : ''}
       <div class="checkout-document">
-        <div class="checkout-top"><div class="setting-icon">${icon('receipt')}</div>${badge(status)}</div>
-        <div class="checkout-title"><span class="eyebrow">${receiptTitle} / #${esc(invoice.id)}</span>
-          <h1>${esc(invoice.title || 'Invoice #' + invoice.id)}</h1>
+        <div class="checkout-top">
+          <div class="checkout-reference"><span class="setting-icon" aria-hidden="true">${icon('receipt')}</span><span class="eyebrow">${receiptTitle} / #${esc(invoice.id)}</span></div>
+          ${badge(status)}
+        </div>
+        <div class="checkout-title">
+          <h1 id="checkout-title">${esc(invoice.title || 'Invoice #' + invoice.id)}</h1>
           <p>From ${esc(invoice.merchant || shortAddress(invoice.issuer))}${verified ? ' <span class="verified-name" aria-label="Invoice details verified" title="Invoice details match the on-chain hash">' + icon('shield-check') + '</span>' : ''}</p>
         </div>
         ${invoice.items ? lineItems(invoice.items) : ''}

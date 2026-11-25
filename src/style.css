@@ -203,11 +203,34 @@ body:has(dialog[open]) { overflow: hidden; }
 .checkout-share-url { width: 100%; margin-top: 8px; font-size: .85rem; }
 .checkout-shell { margin: 0 auto; padding: 29px 20px 25px; max-width: 874px; }
 .back-button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; min-height: 44px; padding: 6px 0; color: var(--muted); font-weight: 680; font-size: .91rem; margin-bottom: 11px; }
+.back-button svg { transition: transform .18s ease; }
 .back-button:hover { color: var(--accent); }
+.back-button:hover svg { transform: translateX(-3px); }
 .checkout-card { border: 1px solid var(--line); background: var(--surface); border-radius: 20px; padding: 24px;  }
-.checkout-card:has(.checkout-document) { display: grid; grid-template-columns: minmax(0, 1.13fr) minmax(0, 1fr); gap: 26px; padding: 26px; }
-.checkout-settlement { align-self: start; border-radius: 12px; background: var(--paper); padding: 15px; }
-.receipt-paid .checkout-settlement { background: var(--mint); }
+.checkout-card:has(.checkout-document) {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: clamp(18px, 3vw, 32px);
+  padding: clamp(20px, 3vw, 30px);
+  border-color: #a899e03d;
+  background: linear-gradient(145deg, #212035, #161827 62%);
+  box-shadow: inset 0 1px #ffffff0e, 0 22px 60px #07081370;
+}
+.checkout-document { min-width: 0; }
+.checkout-settlement {
+  align-self: start;
+  min-width: 0;
+  border: 1px solid #a899e030;
+  border-radius: 16px;
+  background: linear-gradient(150deg, #22203a, #10111e 65%);
+  padding: 17px;
+}
+.receipt-paid .checkout-settlement {
+  border-color: #71c6aa52;
+  background: linear-gradient(150deg, #25534a, #19332f 68%);
+}
+.checkout-loading { display: flex; align-items: center; gap: 10px; min-height: 52px; color: var(--muted); }
+.checkout-loading svg { color: var(--accent); animation: rotate 1.1s linear infinite; }
 .payment-confirmation {
   position: relative;
   isolation: isolate;
@@ -257,6 +280,13 @@ body:has(dialog[open]) { overflow: hidden; }
 .confirmation-copy span { color: #c1e7db; font-size: .86rem; }
 
 @media (prefers-reduced-motion: no-preference) {
+  .checkout-first-entry .checkout-document,
+  .checkout-first-entry .checkout-settlement,
+  .checkout-first-entry .invoice-proof {
+    animation: sheet-enter .42s cubic-bezier(.2,.75,.25,1) var(--checkout-offset) both;
+  }
+  .checkout-first-entry .checkout-settlement { animation-delay: calc(var(--checkout-offset) + 55ms); }
+  .checkout-first-entry .invoice-proof { animation-delay: calc(var(--checkout-offset) + 105ms); }
   .payment-confirmation.is-animating::before {
     animation: confirmation-shine .95s ease-out var(--confirmation-offset) both;
   }
@@ -292,18 +322,23 @@ body:has(dialog[open]) { overflow: hidden; }
     to { stroke-dasharray: 24; stroke-dashoffset: 0; }
   }
 }
-.checkout-top { display: flex; justify-content: space-between; align-items: center; }
-.checkout-title { margin: 15px 0 12px; }
-.checkout-title .eyebrow { color: var(--accent); }
+.checkout-top, .checkout-reference { display: flex; align-items: center; gap: 10px; }
+.checkout-top { justify-content: space-between; }
+.checkout-top .status { flex: none; }
+.checkout-reference { min-width: 0; }
+.checkout-reference .setting-icon { flex: none; width: 37px; height: 37px; }
+.checkout-reference .eyebrow { color: var(--accent); line-height: 1.3; overflow-wrap: anywhere; }
+.checkout-title { margin: 17px 0; }
 .checkout-title h1, .checkout-card > h1 { margin: 6px 0 5px; font: 780 clamp(1.7rem, 6vw, 2.32rem)/1.11 var(--display); letter-spacing: -.055em; overflow-wrap: anywhere; }
 .checkout-title p { margin: 0; color: var(--muted); overflow-wrap: anywhere; }
 .verified-name { display: inline-flex; color: #9cf1cd; }
 .verified-name svg { width: 15px; height: 15px; }
-.checkout-amount { padding: 0 0 8px; }
+.checkout-amount { padding: 0 0 9px; border-bottom: 1px solid #ffffff1b; }
 .checkout-amount > span { color: var(--accent); font: 660 .72rem var(--mono); letter-spacing: .08em; }
-.checkout-amount > div { font: 820 clamp(2rem, 7vw, 3.25rem)/1.15 var(--display); letter-spacing: -.075em; overflow-wrap: anywhere; }
-.checkout-amount small { font: 650 .9rem var(--mono); letter-spacing: normal; white-space: nowrap; }
-.checkout-details { margin: 12px 0; }
+.checkout-amount > div { font: 820 clamp(2rem, 7vw, 3.25rem)/1.15 var(--display); letter-spacing: -.075em; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.checkout-amount small { font: 650 .86rem var(--mono); letter-spacing: normal; white-space: nowrap; color: #d9d2eb; }
+.receipt-paid .checkout-amount > span, .receipt-paid .checkout-amount small { color: #b6e9d8; }
+.checkout-details { margin: 12px 0 0; }
 .checkout-details > div { display: flex; justify-content: space-between; gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: .93rem; }
 .checkout-details dt { color: var(--muted); }
 .checkout-details dd { margin: 0; text-align: right; font-weight: 650; overflow-wrap: anywhere; }
@@ -338,7 +373,7 @@ body:has(dialog[open]) { overflow: hidden; }
 .line-items li { border-top: 1px solid var(--line); font-size: .88rem; }
 .line-items li > span { overflow-wrap: anywhere; }
 .line-items li strong { flex: none; font-variant-numeric: tabular-nums; }
-.invoice-proof { margin-top: 17px; border-radius: 17px; background: var(--surface); border: 1px solid var(--line); padding: 17px 20px; }
+.invoice-proof { margin-top: 14px; border-radius: 17px; background: linear-gradient(130deg, #1d1e31, var(--surface)); border: 1px solid var(--line); padding: 17px 20px; }
 .proof-heading { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 11px; }
 .proof-heading h2 { font: 780 1.02rem/1.2 var(--display); margin: 0; }
 .proof-heading p { margin: 3px 0 0; color: var(--muted); font-size: .85rem; }
@@ -676,7 +711,10 @@ html { scroll-behavior: smooth; scroll-padding-top: 108px; }
   .payment-guide { margin-top: 38px; }
   .glass-steps { grid-template-columns: minmax(0, 1fr); margin-top: 15px; }
   .checkout-card, .checkout-card:has(.checkout-document) { padding: 12px; }
-  .checkout-title { margin-block: 9px; }
+  .checkout-reference .setting-icon { width: 32px; height: 32px; }
+  .checkout-reference .setting-icon svg { width: 17px; height: 17px; }
+  .checkout-reference .eyebrow { font-size: .79rem; }
+  .checkout-title { margin-block: 10px; }
   .checkout-title h1, .checkout-card > h1 { font-size: clamp(1.45rem, 5vw, 1.7rem); }
   .checkout-details { margin-block: 7px; }
   .checkout-details > div { padding-block: 7px; }
