@@ -636,36 +636,46 @@ html { scroll-behavior: smooth; scroll-padding-top: 108px; }
   .glass-stage { width: 100%; max-width: 650px; justify-self: center; }
 }
 @media (max-width: 640px) {
-  html { scroll-padding-top: 134px; }
+  html { scroll-padding-top: 116px; }
   .mast { margin-top: 10px; top: 8px; }
   .mast-inner { grid-template-columns: minmax(0, 1fr) auto; gap: 0 9px; }
-  .brand { min-height: 54px; }
+  .brand { min-height: 44px; font-size: 1.45rem; }
+  .brand-mark { width: 25px; height: 25px; }
   .mast-wallet { grid-column: 2; grid-row: 1; }
   .mast-wallet .net { display: none; }
-  .primary-nav { grid-row: 2; grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 9px; }
-  .primary-nav button { min-height: 38px; }
-  .workspace { padding-top: 35px; }
-  .hero-footnote { margin-top: 15px; }
-  .glass-stage { min-height: 410px; border-radius: 21px; }
-  .preview-header { padding: 12px 11px 0; }
+  .header-wallet { padding: 6px 11px; font-size: .84rem; }
+  .primary-nav { grid-row: 2; grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; padding: 2px; margin-bottom: 7px; }
+  .primary-nav button { min-height: 44px; font-size: .83rem; }
+  .workspace { padding-top: 25px; }
+  .folio-hero { gap: 24px; margin-bottom: 50px; }
+  .folio-hero h1 { font-size: clamp(1.9rem, 9vw, 2.85rem); }
+  .folio-hero h1 span { margin-top: 3px; }
+  .hero-description { margin-block: 12px 17px; font-size: .875rem; line-height: 1.5; }
+  .hero-actions { gap: 9px; }
+  .hero-actions .button, .hero-secondary { min-height: 44px; padding-inline: 13px; font-size: .85rem; }
+  .hero-footnote { margin-top: 12px; font-size: .75rem; }
+  .glass-stage { min-height: 0; border-radius: 18px; }
+  .preview-header { padding: 9px 9px 0; }
   .preview-header h2 { font-size: .83rem; }
   .preview-switch .preview-toggle { min-height: 44px; padding-inline: 8px; font-size: .76rem; }
-  .preview-scene { min-height: 326px; padding: 10px 26px 18px 11px; }
-  .glass-stack { height: 268px; }
-  .document-face { padding-block: 16px; }
-  .document-label { margin-top: 15px; }
-  .document-total strong { font-size: 1.65rem; }
-  .document-note { margin-top: 10px; }
-  .preview-status { bottom: -19px; right: -25px; min-width: 156px; padding: 7px 8px; }
+  .preview-scene { min-height: 0; padding: 14px 26px 18px 11px; }
+  .glass-stack { height: clamp(216px, 58vw, 256px); }
+  .document-face { padding-block: 14px; }
+  .document-label { margin-top: 11px; }
+  .document-lines { margin-block: 9px 8px; padding-block: 7px; }
+  .document-total strong { font-size: 1.6rem; }
+  .document-note { margin-top: 8px; }
+  .preview-status { bottom: -12px; right: -21px; min-width: 0; gap: 7px; padding: 6px 7px; }
   .preview-status-icon { width: 28px; height: 28px; }
   .preview-status strong { font-size: .71rem; }
-  .preview-caption { margin: 0 0 10px 11px; }
+  .preview-caption { margin: 0 0 9px 9px; }
   .section-head .button { font-size: .84rem; }
   .glass-steps { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 360px) {
-  .preview-header h2 { flex-basis: 100%; }
-  .preview-header { padding-left: 13px; }
+  .preview-header { gap: 6px; }
+  .preview-header h2 { font-size: .76rem; }
+  .preview-switch .preview-toggle { gap: 4px; padding-inline: 5px; }
   .preview-scene { padding-inline: 5px 24px; }
   .glass-arrival { width: 80%; }
   .section-head .button { white-space: nowrap; }
