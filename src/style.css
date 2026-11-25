@@ -660,14 +660,14 @@ html { scroll-behavior: smooth; scroll-padding-top: 108px; }
   .preview-header { padding: 9px 9px 0; }
   .preview-header h2 { font-size: .83rem; }
   .preview-switch .preview-toggle { min-height: 44px; padding-inline: 8px; font-size: .76rem; }
-  .preview-scene { min-height: 0; padding: 10px 26px 16px 11px; }
+  .preview-scene { min-height: 0; padding: 10px 26px 25px 11px; }
   .glass-stack { height: clamp(208px, 52vw, 232px); }
   .document-face { padding-block: 12px; }
   .document-label { margin-top: 9px; }
   .document-lines { margin-block: 8px 7px; padding-block: 6px; }
   .document-total strong { font-size: 1.6rem; }
   .document-note { margin-top: 8px; }
-  .preview-status { bottom: -12px; right: -21px; min-width: 0; gap: 7px; padding: 6px 7px; }
+  .preview-status { bottom: -30px; right: -21px; min-width: 0; gap: 7px; padding: 6px 7px; }
   .preview-status-icon { width: 28px; height: 28px; }
   .preview-status strong { font-size: .71rem; }
   .preview-caption { margin: 0 0 9px 9px; }
