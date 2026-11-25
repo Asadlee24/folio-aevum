@@ -4,6 +4,7 @@ import { CHAIN_ID, CONTRACT, FEATURED_INVOICE } from './config.js';
 import * as chain from './chain.js';
 import * as model from './model.js';
 import * as ui from './ui.js';
+import { preparePaymentSound } from './payment-sound.js';
 import { mountWallet, showWalletModal, wallet } from './wallet.jsx';
 
 const app = document.querySelector('#app');
@@ -374,11 +375,13 @@ function loadHash(invoice, version) {
 }
 
 function updateCheckout(invoice) {
-  if (invoice.state === 'paid' && state.current?.state === 'open') {
+  const confirmed = invoice.state === 'paid' && state.current?.state === 'open';
+  if (confirmed) {
     confirmationStarted = performance.now();
     paymentStatus.textContent = 'Payment confirmed. Your receipt is ready.';
   }
   state.current = invoice;
+  return confirmed;
 }
 
 async function loadFeatured(version) {
@@ -539,8 +542,9 @@ async function createInvoice(form) {
 async function pay() {
   const invoice = state.current;
   const version = routeVersion;
-  if (!invoice || model.invoiceStatus(invoice) !== 'open') return;
+  if (state.busy || !invoice || model.invoiceStatus(invoice) !== 'open') return;
   if (!state.account || state.walletChain !== CHAIN_ID) { connect(); return; }
+  const playConfirmation = preparePaymentSound();
   await run(async () => {
     notifyProgress('Checking wallet balance and tUSD8 approval…', '', 'checking');
     const payer = await wallet();
@@ -549,7 +553,9 @@ async function pay() {
     });
     if (version !== routeVersion) return;
     clearInterval(receiptTimer);
-    updateCheckout(enrich(settled, invoice.memo));
+    if (updateCheckout(enrich(settled, invoice.memo))) {
+      void playConfirmation?.(() => version === routeVersion).catch(() => {});
+    }
   });
 }
 
